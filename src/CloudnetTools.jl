@@ -1,8 +1,22 @@
-# Main module
+# Main CloudNet.jl module.
+"""
+A set of tools to process and analyze data outputs from CloudNet classification algorithm.
+
+(c) 2020, Pablo Saavedra Garfias
+University of Leipzig
+Faculty of Physics and Geosciences
+LIM
+
+See LICENSE
+"""
+
+
+module CloudNet
+
 using NCDatasets
 using Dates
 
-function readCloudNetFile(nfile::String)
+function readCLNFile(nfile::String)
     @assert isfile(nfile) error("$nfile cannot be found!")
     if contains(nfile, "categorize")
         println("reading Categorize file")
@@ -25,6 +39,8 @@ function readCloudNetFile(nfile::String)
         global Ze = nc["Z"][:,:]
     end
     Ze[Ze .> 100] .= NaN;
-    return (time=tit, Z=Ze)
+    return Dict(:time=>tit, :Z=>Ze)
+end
+
 end
 # --end of script
