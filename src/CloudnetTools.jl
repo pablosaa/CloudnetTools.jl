@@ -32,9 +32,14 @@ function readCLNFile(nfile::String)
         tmp = nc["time"]
         hh = floor.(Int64, tmp)
         mi = @. mod(tmp*60, 60)
-        ss = @. floor(mod(mi*60, 60))
-        mi = floor.(mi)
-        global tit = @. DateTime(yy, mm, dd, hh, mi, ss)
+        ss = @. mod(mi*60, 60)
+        ms = @. mod(ss, 1)*1000
+        
+        mi = floor.(Int64, mi)
+        ss = floor.(Int64, ss)
+        ms = floor.(Int64, ms)
+        
+        global tit = @. DateTime(yy, mm, dd, hh, mi, ss, ms)
 
         global Ze = nc["Z"][:,:]
     end
