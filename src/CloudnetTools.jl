@@ -41,10 +41,12 @@ function readCLNFile(nfile::String)
         
         global tit = @. DateTime(yy, mm, dd, hh, mi, ss, ms)
 
+        global height = nc["height"][:]
         global Ze = nc["Z"][:,:]
+        
     end
     Ze[Ze .> 100] .= NaN;
-    return Dict(:time=>tit, :Z=>Ze)
+    return Dict(:time=>tit, :height=>height, :Z=>Ze)
 end
 
 end
