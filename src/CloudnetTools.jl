@@ -42,11 +42,60 @@ function readCLNFile(nfile::String)
         global tit = @. DateTime(yy, mm, dd, hh, mi, ss, ms)
 
         global height = nc["height"][:]
+        # RADAR
         global Ze = nc["Z"][:,:]
+        global V = nc["v"][:,:]
+        global σV = nc["v_sigma"][:,:]
+        global ωV = nc["width"][:,:]
+        # LIDAR
+        global β = nc["beta"][:,:]
+        # MWR
+        global LWP = nc["lwp"][:,:]
+        # CLOUDNETpy
+        global P_insect = nc["insect_prob"][:,:]
+        global Q_bits = nc["quality_bits"][:,:]
+        global CAT_bits = nc["category_bits"][:,:]
+        # MODEL
+        global T = nc["temperature"][:,:]
+        global Tw= nc["Tw"][:,:]
+        global Pa = nc["pressure"][:,:]
+        global QV = nc["q"][:,:]
+        global UWIND = nc["uwind"][:,:]
+        global VWIND = nc["vwind"][:,:]
         
     end
+
+    # For Classification dataset:
+    classfile = replace(nfile, "categorize" => "classific")
+    @assert isfile(classfile) errro("$classfile cannot be found!")
+    NCDataset(classfile; format=:netcdf4_classic) do nc
+        global CLASS = nc["target_classification"][:,:]
+        global detection = nc["detection_status"][:,:]
+    end
+
+    # Cleaning variables:
     Ze[Ze .> 100] .= NaN;
-    return Dict(:time=>tit, :height=>height, :Z=>Ze)
+    
+    return Dict(:time=>tit,
+                :height=>height,
+                :Z => Ze,
+                :V => V,
+                :σV => σV,
+                :ωV => ωV,
+                :β => β,
+                :LWP => LWP,
+                :T => T,
+                :Tw => Tw,
+                :Pa => Pa,
+                :Qv => QV,
+                :UWIND => UWIND,
+                :VWIND => VWIND,
+                :QUBITS => Q_bits,
+                :P_INSECT => P_insect,
+                :CATEBITS => CAT_bits,
+                :CLASSIFY => CLASS,
+                :DETECTST => detection,
+                )
 end
 
 end
