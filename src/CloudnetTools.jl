@@ -25,6 +25,41 @@ function readCLNFile(nfile::String)
     else
         error("$nfile does not apear to be a Cloudnet file!")
     end
+
+    # Categorize variables to read:
+    vars_categorize = Dict(
+        # RADAR
+        :Z => "Z",
+        :V => "v",
+        :σV => "v_sigma",
+        :ωV => "width",
+        # LIDAR
+        :β => "beta",
+        #MWR
+        :LWP => "lwp",
+        #CLOUDNETpy
+        :P_INSECT => "insect_prob",
+        :QUALBITS => "quality_bits",
+        :CATEBITS => "category_bits",
+        #MODEL
+        :T => "temperature",
+        :Tw => "Tw",
+        :Pa => "pressure",
+        :QV => "q",
+        :UWIND => "uwind",
+        :VWIND => "vwind",
+    )
+
+    # Classification variables to read:
+    vars_classific = Dict(
+        :CLASSIFY => "target_classification",
+        :DETECTST =>"detection_status",
+    )
+
+    # Defining Output varaible:
+    var_output = Dict{Symbol, Any}()
+
+    # Starting reading CloudNet files:
     NCDataset(nfile; format=:netcdf4_classic) do nc
         yy = Int64(nc.attrib["year"])
         mm = Int64(nc.attrib["month"])
@@ -39,29 +74,28 @@ function readCLNFile(nfile::String)
         ss = floor.(Int64, ss)
         ms = floor.(Int64, ms)
         
-        global tit = @. DateTime(yy, mm, dd, hh, mi, ss, ms)
+        tit = @. DateTime(yy, mm, dd, hh, mi, ss, ms)
 
-        global height = nc["height"][:]
-        # RADAR
-        global Ze = nc["Z"][:,:]
-        global V = nc["v"][:,:]
-        global σV = nc["v_sigma"][:,:]
-        global ωV = nc["width"][:,:]
-        # LIDAR
-        global β = nc["beta"][:,:]
-        # MWR
-        global LWP = nc["lwp"][:,:]
-        # CLOUDNETpy
-        global P_insect = nc["insect_prob"][:,:]
-        global Q_bits = nc["quality_bits"][:,:]
-        global CAT_bits = nc["category_bits"][:,:]
-        # MODEL
-        global T = nc["temperature"][:,:]
-        global Tw= nc["Tw"][:,:]
-        global Pa = nc["pressure"][:,:]
-        global QV = nc["q"][:,:]
-        global UWIND = nc["uwind"][:,:]
-        global VWIND = nc["vwind"][:,:]
+        var_output[:time] = tit
+
+        var_output[:height] = nc["height"][:]
+
+        for inkey ∈ keys(vars_categorize)
+            x = vars_categorize[inkey]
+            println(x)
+            tmp = nc[x][:,:]
+            if haskey(nc[x].attrib, "missing_value")
+                miss_val = nc[x].attrib["missing_value"]
+            elseif haskey(nc[x].attrib, "_FillValue")
+                miss_val = nc[x].attrib["_FillValue"]
+            else
+                miss_val = 9.96921f36
+            end
+
+            # Cleaning missing values from variables :
+            eltype(tmp) <: AbstractFloat && (tmp[tmp .≈ miss_val] .= NaN)
+            var_output[inkey] = tmp
+        end
         
     end
 
@@ -69,34 +103,24 @@ function readCLNFile(nfile::String)
     classfile = replace(nfile, "categorize" => "classific")
     @assert isfile(classfile) errro("$classfile cannot be found!")
     NCDataset(classfile; format=:netcdf4_classic) do nc
-        global CLASS = nc["target_classification"][:,:]
-        global detection = nc["detection_status"][:,:]
+        
+        [var_output[x] = nc[vars_classific[x]][:,:] for x ∈ keys(vars_classific)];
+        
     end
 
-    # Cleaning variables:
-    Ze[Ze .> 100] .= NaN;
     
-    return Dict(:time=>tit,
-                :height=>height,
-                :Z => Ze,
-                :V => V,
-                :σV => σV,
-                :ωV => ωV,
-                :β => β,
-                :LWP => LWP,
-                :T => T,
-                :Tw => Tw,
-                :Pa => Pa,
-                :Qv => QV,
-                :UWIND => UWIND,
-                :VWIND => VWIND,
-                :QUBITS => Q_bits,
-                :P_INSECT => P_insect,
-                :CATEBITS => CAT_bits,
-                :CLASSIFY => CLASS,
-                :DETECTST => detection,
-                )
-end
+    return var_output;
 
-end
+end  # end of function
+# ----/
+
+# ***************************************************
+# Function to normalize matrix to [0,1]
+function TransformZeroOne(X::T) where T<:AbstractArray
+    nonans = .!isnan.(X)
+    x₀, x₁ = extrema(X[nonans])
+    return (X .- x₀)./(x₁ - x₀);
+end  # end of function
+
+end  # end of Module
 # --end of script
