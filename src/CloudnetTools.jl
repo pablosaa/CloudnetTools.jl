@@ -15,8 +15,9 @@ module CloudNet
 
 using NCDatasets
 using Dates
+using Interpolations
 
-function readCLNFile(nfile::String)
+function readCLNFile(nfile::String; modelreso=false)
     @assert isfile(nfile) error("$nfile cannot be found!")
     if contains(nfile, "categorize")
         println("reading Categorize file")
@@ -64,9 +65,9 @@ function readCLNFile(nfile::String)
         yy = Int64(nc.attrib["year"])
         mm = Int64(nc.attrib["month"])
         dd = Int64(nc.attrib["day"])
-        tmp = nc["time"]
-        hh = floor.(Int64, tmp)
-        mi = @. mod(tmp*60, 60)
+        tmp_time = float.(nc["time"])
+        hh = floor.(Int64, tmp_time)
+        mi = @. mod(tmp_time*60, 60)
         ss = @. mod(mi*60, 60)
         ms = @. mod(ss, 1)*1000
         
@@ -80,6 +81,7 @@ function readCLNFile(nfile::String)
 
         var_output[:height] = nc["height"][:]
 
+      
         for inkey ∈ keys(vars_categorize)
             x = vars_categorize[inkey]
             println(x)
@@ -94,11 +96,28 @@ function readCLNFile(nfile::String)
 
             # Cleaning missing values from variables :
             eltype(tmp) <: AbstractFloat && (tmp[tmp .≈ miss_val] .= NaN)
+
             var_output[inkey] = tmp
         end
-        
+
+        # If modelreso = true, interpolate model data to cloudnet resolution:
+
+        model_time = float.(nc["model_time"])
+        model_height = nc["model_height"][:]
+        if !modelreso
+            var_output[:model_time] = model_time
+            var_output[:model_height] = model_height
+        else
+            var_output = ConvertModelResolution(var_output,
+                                                model_time,
+                                                model_height;
+                                                cln_time=tmp_time)
+        end
+
     end
 
+    
+    
     # For Classification dataset:
     classfile = replace(nfile, "categorize" => "classific")
     @assert isfile(classfile) errro("$classfile cannot be found!")
@@ -121,6 +140,34 @@ function TransformZeroOne(X::T) where T<:AbstractArray
     x₀, x₁ = extrema(X[nonans])
     return (X .- x₀)./(x₁ - x₀);
 end  # end of function
+# ----/
+
+# *********************************************************
+# Interpolate Meteo data from Model to CloudNet resolution
+function ConvertModelResolution(cln_in::Dict{Symbol, Any}, model_time, model_height;
+                                cln_time=nothing, cln_height=nothing)
+
+    nodes = (model_height, model_time)
+    if isnothing(cln_time)
+        cln_time = @. hour(cln_in[:time]) + minute(cln_in[:time])/60 + seconds(cln_in[:time])/3600
+    end
+    
+    if isnothing(cln_height)
+        cln_height = cln_in[:height]
+    end
+
+    MODELVAR = (:T, :Pa, :UWIND, :VWIND, :QV)
+
+    for var ∈ MODELVAR
+        itp = interpolate(nodes, cln_in[var], Gridded(Linear()))
+        outvar = [itp(i,j) for i ∈ cln_height, j ∈ cln_time]
+        cln_in[var] = outvar
+    end
+
+    return cln_in
+end
+# ----/
+
 
 end  # end of Module
 # --end of script
