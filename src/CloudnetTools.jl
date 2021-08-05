@@ -135,21 +135,37 @@ end  # end of function
 
 # ***************************************************
 # Function to normalize matrix to [0,1]
-function TransformZeroOne(X::T) where T<:AbstractArray
+# in case the input variable has log units (e.g. dBz),
+# then the optional parameter could be isdB=true to treat
+# input array as a linear variable, the output is based on
+# the non-logarithm variable.
+#
+function TransformZeroOne(X::T; isdB=false) where T<:AbstractArray
+    
     nonans = .!isnan.(X)
+    if isdB
+        X = @. 10^(X/10)
+    end
     x₀, x₁ = extrema(X[nonans])
-    return (X .- x₀)./(x₁ - x₀);
+    Xout = (X .- x₀)./(x₁ - x₀);
+
+    return Xout
 end  # end of function
 # ----/
 
 # *********************************************************
 # Interpolate Meteo data from Model to CloudNet resolution
-function ConvertModelResolution(cln_in::Dict{Symbol, Any}, model_time, model_height;
-                                cln_time=nothing, cln_height=nothing)
+function ConvertModelResolution(cln_in::Dict{Symbol, Any},
+                                model_time::Vector{Float32},
+                                model_height::Vector{Float32};
+                                cln_time=nothing,
+                                cln_height=nothing)
 
     nodes = (model_height, model_time)
     if isnothing(cln_time)
-        cln_time = @. hour(cln_in[:time]) + minute(cln_in[:time])/60 + seconds(cln_in[:time])/3600
+        let ts = cln_in[:time]
+            cln_time = @. hour(ts) + minute(ts)/60 + seconds(ts)/3600
+        end
     end
     
     if isnothing(cln_height)
@@ -158,7 +174,7 @@ function ConvertModelResolution(cln_in::Dict{Symbol, Any}, model_time, model_hei
 
     MODELVAR = (:T, :Pa, :UWIND, :VWIND, :QV)
 
-    for var ∈ MODELVAR
+    map(MODELVAR) do var
         itp = interpolate(nodes, cln_in[var], Gridded(Linear()))
         outvar = [itp(i,j) for i ∈ cln_height, j ∈ cln_time]
         cln_in[var] = outvar
