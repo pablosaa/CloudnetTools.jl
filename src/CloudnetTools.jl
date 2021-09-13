@@ -19,6 +19,7 @@ using Interpolations
 using Printf
 using Statistics
 using ImageFiltering
+using ARMtools
 
 # Including transformation files:
 include("arm_mwr2nc.jl")
