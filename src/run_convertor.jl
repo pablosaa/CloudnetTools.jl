@@ -2,13 +2,14 @@
 
 # Main script to run the conversion of ARM data files to netCDF input CloudNetpy files.
 
-using NCDatasets, DataStructures
-using Dates
-using Printf
-using UUIDs
-using Statistics
-using ImageFiltering
+#using NCDatasets, DataStructures
+#using Dates
+#using Printf
+#using UUIDs
+#using Statistics
+#using ImageFiltering
 using ARMtools
+using CloudnetTools
 
 # Declaration of parameter to be used to run
 # Possible input parameters are:
@@ -19,23 +20,23 @@ using ARMtools
 input_params = Dict(
     "site" => "utqiagvik", 
     "campaign" => "nsa",
-    "products" => Dict("radar" => "", #KAZR/ARSCL",
-                "ceilometer" => "", #"CEIL10m", #
+    "products" => Dict("radar" => "KAZR/ARSCL",
+                "ceilometer" => "CEIL10m", #
                 "lidar" => "HSRL", #"", #
                 "model" => "",
-                "radiometer" => ""), #MWR/RET
-    "years" => 2017,
-    "months" => (11),
-    "days" => (9),
+                "radiometer" => "MWR/RET"), #),
+    "years" => (2018),
+    "months" => (1),
+    "days" => (31),
     "data_path" => "/home/psgarfias/LIM/data/",
     "output_path" => "/home/psgarfias/LIM/data/CloudNet/input");
 
 
 # *****************************************************************
-include("./arm_mwr2nc.jl")
-include("./arm_lidar2nc.jl")
-include("./arm_hsrl2nc.jl")
-include("./arm_kazr2nc.jl")
+#include("./arm_mwr2nc.jl")
+#include("./arm_lidar2nc.jl")
+#include("./arm_hsrl2nc.jl")
+#include("./arm_kazr2nc.jl")
 # *****************************************************************
 """
 Function to invoque the respective ARM data converter function:
@@ -55,7 +56,7 @@ function ARMconverter(the_key, arm_filenc, out_path)
     );
 
     !isdir(out_path) && mkpath(out_path);
-    ex = :($list_of_func[$the_key]($arm_filenc, $out_path))
+    ex = :(CloudnetTools.$list_of_func[$the_key]($arm_filenc, $out_path))
     return eval(ex)
 end
 
