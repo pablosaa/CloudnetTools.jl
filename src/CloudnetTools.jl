@@ -13,9 +13,18 @@ See LICENSE
 
 module CloudNet
 
-using NCDatasets
+using NCDatasets, DataStructures
 using Dates
 using Interpolations
+using Printf
+using Statistics
+using ImageFiltering
+
+# Including transformation files:
+include("arm_mwr2nc.jl")
+include("arm_lidar2nc.jl")
+include("arm_kazr2nc.jl")
+include("arm_hsrl2nc.jl")
 
 function readCLNFile(nfile::String; modelreso=false)
     @assert isfile(nfile) error("$nfile cannot be found!")
