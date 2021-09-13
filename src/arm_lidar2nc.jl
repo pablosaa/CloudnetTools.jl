@@ -15,7 +15,7 @@ function lidar2nc(lidar_file::String, output_path::String)
     arm_day = day(time[1])
     range = lidar[:height];
     beta = lidar[:β_raw]; # converted from 1/(sr km 10000) to 1/(sr m)
-    wavelength = 910;  # Obtained from the ARM ceilometer handbook [nm]
+    λ_nm = 910;  # Obtained from the ARM ceilometer handbook [nm]
     tilt_angle = maximum(lidar[:TILT]);
     height = lidar[:ALT];
     lidar_location = join(lidar[:location]);
@@ -24,7 +24,7 @@ function lidar2nc(lidar_file::String, output_path::String)
     file_uuid = string(uuid1());
     file_history = string(now(), " - ceilometer file created");
     file_time = hour.(time) + minute.(time)/60 + second.(time)/3600;
-    # Adaptation from CloudNetpy vaisala.py script:
+    # Adaptation for CloudNetpy 
     noise_params = (100, 1e-12, 2e-7, (1.1e-8, 2.9e-8)) #(100, 1e-12, 3e-6, (1.1e-8, 2.9e-8))
     range_square = (range*1e-3).^2;  # [km²]
     beta_new = Array(1e-7*beta./range_square);  # converting to [sr⁻¹ m⁻¹] 
@@ -54,7 +54,7 @@ function lidar2nc(lidar_file::String, output_path::String)
     ind_snr_limit = findall(snr .< snr_limit);
     β[ind_snr_limit] .= NaN;
     β .*= range_square;
-    β[isnan.(β)] .= 9.96921f36
+    β[isnan.(β)] .= NCDatasets.fillvalue(eltype(β))
 
     # Creating cloudnetpy input netCDF file:
     # Creating output file for CloudNetpy
@@ -88,21 +88,21 @@ function lidar2nc(lidar_file::String, output_path::String)
         "units"                     => "sr-1 m-1",
         "long_name"                 => "Raw attenuated backscatter coefficient",
         "comment"                   => "Range corrected, attenuated backscatter.",
-        #"missing_value"             => beta.attrib["missing_value"],
+        "missing_value"             => NCDatasets.fillvalue(eltype(β)),
     ))
 
     ncbeta = defVar(ds,"beta", Float32, ("range", "time"), attrib = OrderedDict(
         "units"                     => "sr-1 m-1",
         "long_name"                 => "Attenuated backscatter coefficient",
         "comment"                   => "Range corrected, SNR screened, attenuated backscatter.",
-        #"missing_value"             => beta.attrib["missing_value"],
+        "missing_value"             => NCDatasets.fillvalue(eltype(β)),
     ))
 
     ncbeta_smooth = defVar(ds,"beta_smooth", Float32, ("range", "time"), attrib = OrderedDict(
         "units"                     => "sr-1 m-1",
         "long_name"                 => "Smoothed attenuated backscatter coefficient",
         "comment"                   => "Range corrected, SNR screened backscatter coefficient.\n Weak background is smoothed using Gaussian 2D-kernel.",
-        #"missing_value"             => beta.attrib["missing_value"],
+        "missing_value"             => NCDatasets.fillvalue(eltype(β)),
     ))
 
     ncrange = defVar(ds,"range", Float32, ("range",), attrib = OrderedDict(
@@ -137,12 +137,12 @@ function lidar2nc(lidar_file::String, output_path::String)
 
     ncbeta_raw[:] = 1e-7*beta; #...
     ncbeta[:] = β; #...
-    ncbeta_smooth[:] = β; #...
+    ncbeta_smooth[:] = β; # β_smooth isn't used by cloudnetpy!
     ncrange[:] = range; #...
     nctime[:] = file_time; #...
     nctilt_angle[:] = tilt_angle; #...
     ncheight[:] = height[1] .+ range; #...
-    ncwavelength[:] = wavelength; #...
+    ncwavelength[:] = λ_nm; #...
 
     close(ds)
 

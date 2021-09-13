@@ -18,22 +18,18 @@ function hsrl2nc(lidar_file::String, output_path::String)
     #arm_day = day(time[1])
     range = lidar[:height]
     beta = lidar[:β_raw]  # 1/(m sr) plot scale logarithmic
-    #missing_beta = beta.attrib["missing_value"];
-    # Replacing the Fill_value in netCDF for NaNs (temporarly).
-    #beta[beta .== missing_beta] .= NaN;
 
     std_beta = lidar[:SNR]
-    #missing_beta = std_beta.attrib["missing_value"];
 
     depol_c = lidar[:δ];
     
     file_time = hour.(time) + minute.(time)/60 + second.(time)/3600;
     file_uuid = string(uuid1());
     file_history = string(now(), " - hsrl file created");
-    lidar_source = lidar[:location]
-    lidar_location = lidar[:instrumentmodel]
-    lidar_doi = lidar[:doi];
-    wavelength = 510;  # [nm]  this is from documentation, ncfile doesn't have it
+    lidar_source = join(lidar[:location])
+    lidar_location = join(lidar[:instrumentmodel])
+    lidar_doi = join(lidar[:doi]);
+    λ_nm = 510;  # [nm]  this is from documentation, ncfile doesn't have it
     ## end of reading parameters
 
 
@@ -185,8 +181,8 @@ function hsrl2nc(lidar_file::String, output_path::String)
     #β_smooth = calc_β(β_smooth, range, noise_params);
 
     # For storing as netCDF:
-    β[isnan.(β)] .= 9.96921f36;
-    β_smooth[isnan.(β_smooth)] .= 9.96921f36;
+    β[isnan.(β)] .= NCDatasets.fillvalue(eltype(β));
+    β_smooth[isnan.(β_smooth)] .= NCDatasets.fillvalue(eltype(β));
 
     # Creating cloudnetpy input netCDF file:
     ARM_OUTPATH = output_path;
@@ -223,21 +219,21 @@ function hsrl2nc(lidar_file::String, output_path::String)
         "units"                     => "sr-1 m-1",
         "long_name"                 => "Raw attenuated backscatter coefficient",
         "comment"                   => "Range corrected, attenuated backscatter.",
-        #"missing_value"             => beta.attrib["missing_value"],
+        "missing_value"             => NCDatasets.fillvalue(eltype(β)),
     ))
 
     ncbeta = defVar(ds,"beta", Float32, ("range", "time"), attrib = OrderedDict(
         "units"                     => "sr-1 m-1",
         "long_name"                 => "Attenuated backscatter coefficient",
         "comment"                   => "Range corrected, SNR screened, attenuated backscatter.",
-        #"missing_value"             => beta.attrib["missing_value"],
+        "missing_value"             => NCDatasets.fillvalue(eltype(β)),
     ))
 
     ncbeta_smooth = defVar(ds,"beta_smooth", Float32, ("range", "time"), attrib = OrderedDict(
         "units"                     => "sr-1 m-1",
         "long_name"                 => "Smoothed attenuated backscatter coefficient",
         "comment"                   => "Range corrected, SNR screened backscatter coefficient.\n Weak background is smoothed using Gaussian 2D-kernel.",
-    #"missing_value"             => beta.attrib["missing_value"],
+        "missing_value"             => NCDatasets.fillvalue(eltype(β)),
     ))
 
     ncrange = defVar(ds,"range", Float32, ("range",), attrib = OrderedDict(
@@ -268,14 +264,14 @@ function hsrl2nc(lidar_file::String, output_path::String)
     ))
 
     # Define variables
-    ncbeta_raw[:] = β_raw; #beta...
-    ncbeta[:] = β; #...
-    ncbeta_smooth[:] = β_smooth; #...
-    ncrange[:] = range; #...
-    nctime[:] = file_time; #...
-    nctilt_angle[:] = 0; #tilt_angle; #...
+    ncbeta_raw[:] = β_raw;
+    ncbeta[:] = β;
+    ncbeta_smooth[:] = β_smooth;
+    ncrange[:] = range;
+    nctime[:] = file_time;
+    nctilt_angle[:] = 0;
     ncheight[:] = 15 .+ range; #... PSG to be fixed
-    ncwavelength[:] = wavelength; #...
+    ncwavelength[:] = λ_nm;
 
     close(ds)
 
@@ -284,10 +280,4 @@ end
 # end of Funciton
 ###
 
-
-
-
-
-# noise_params contains (n_gates, ..., saturation_noise, (noise_min))
-# noise_params = (100, 1e-18, 1e-9, (1.1e-11, 2.9e-8))
 
