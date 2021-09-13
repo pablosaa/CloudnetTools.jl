@@ -8,7 +8,7 @@
 #using UUIDs
 #using Statistics
 #using ImageFiltering
-using ARMtools
+#using ARMtools
 using CloudnetTools
 
 # Declaration of parameter to be used to run
@@ -48,15 +48,17 @@ Function to invoque the respective ARM data converter function:
 function ARMconverter(the_key, arm_filenc, out_path)
     # Here the values of dictionary keys needs to be replaces by ARM data converter function:
     list_of_func = Dict(
-        "radar" => kazr2nc,
-        "lidar" => hsrl2nc,
-        "radiometer" => mwr2nc,
+        "radar" => CloudnetTools.kazr2nc,
+        "lidar" => CloudnetTools.hsrl2nc,
+        "radiometer" => CloudnetTools.mwr2nc,
         "model" => isempty,
-        "ceilometer" => lidar2nc
+        "ceilometer" => CloudnetTools.lidar2nc
     );
 
     !isdir(out_path) && mkpath(out_path);
-    ex = :(CloudnetTools.$list_of_func[$the_key]($arm_filenc, $out_path))
+ 
+    ex = :($list_of_func[$the_key]($arm_filenc, $out_path))
+    println(ex)
     return eval(ex)
 end
 

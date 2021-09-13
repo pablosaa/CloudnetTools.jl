@@ -11,7 +11,7 @@ See LICENSE
 """
 
 
-module CloudNet
+module CloudnetTools
 
 using NCDatasets, DataStructures
 using Dates
