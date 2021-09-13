@@ -19,6 +19,7 @@ using Interpolations
 using Printf
 using Statistics
 using ImageFiltering
+using UUIDs
 using ARMtools
 
 # Including transformation files:

@@ -4,11 +4,11 @@
 
 #using NCDatasets, DataStructures
 #using Dates
-#using Printf
+using Printf
 #using UUIDs
 #using Statistics
 #using ImageFiltering
-#using ARMtools
+
 using CloudnetTools
 
 # Declaration of parameter to be used to run
