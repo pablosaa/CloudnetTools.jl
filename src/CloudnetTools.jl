@@ -21,6 +21,7 @@ using Statistics
 using ImageFiltering
 using UUIDs
 using ARMtools
+using Plots
 
 # Including transformation files:
 include("arm_mwr2nc.jl")

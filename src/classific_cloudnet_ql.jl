@@ -1,8 +1,5 @@
 # CloudNet classification file plotting
-using NCDatasets
-using Printf
-using Dates
-
+function 
 CLOUDNET_PATH = "/home/psgarfias/LIM/data/CloudNet";
 SUPERSITE = Dict(:nsa=>"output", :mosaic=>"MOSAiC/TROPOS");
 LIDAR_TYPE = "HSRL";

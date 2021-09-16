@@ -28,7 +28,7 @@ function hsrl2nc(lidar_file::String, output_path::String)
     file_history = string(now(), " - hsrl file created");
     lidar_source = join(lidar[:location])
     lidar_location = join(lidar[:instrumentmodel])
-    lidar_doi = join(lidar[:doi]);
+    lidar_doi = haskey(lidar, :doi) ? join(lidar[:doi]) : "none" ;
     λ_nm = 510;  # [nm]  this is from documentation, ncfile doesn't have it
     ## end of reading parameters
 
@@ -277,7 +277,7 @@ function hsrl2nc(lidar_file::String, output_path::String)
 
     return nothing
 end
-# end of Funciton
+# end of Function
 ###
 
 

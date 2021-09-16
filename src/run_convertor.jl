@@ -58,7 +58,7 @@ function ARMconverter(the_key, arm_filenc, out_path)
     !isdir(out_path) && mkpath(out_path);
  
     ex = :($list_of_func[$the_key]($arm_filenc, $out_path))
-    println(ex)
+
     return eval(ex)
 end
 
