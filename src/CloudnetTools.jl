@@ -31,26 +31,6 @@ include("arm_hsrl2nc.jl")
 
 
 """
-Integration of matrix x over dims=1 skipping NaN, optionally
-the integration is perform with respect of vector dh.
-USAGE:
-
-Xt = ∫f(xi::Matrix)
-Xt = ∫f(xi::Matrix; dh::Vector)
-
-"""
-function ∫f(x::AbstractArray, dx::AbstractVector)
-    δx = Vector{eltype(x)}(undef, length(dx)) .= 0
-    δx[2:end] = dx |> diff
-    δx[1] =  δx[2:end] |> minimum
-
-    x[isnan.(x)] .= 0.0
-    
-    return sum(x.*δx, dims=1) |> vec
-end
-#----/
-
-"""
 Read time from netCDF file as fraction of the day and
 convert it to Julia DateTime format.
 USAGE:
@@ -78,16 +58,25 @@ function convert_time2DateTime(yy::Int64, mm::Int64, dd::Int64, hr_time::Abstrac
         
     return @. DateTime(yy, mm, dd, hh, mi, ss, ms)
 end
-function convert_time2DateTime(nc)::Vector{DateTime}
+function convert_time2DateTime(nc; time_var="time")::Vector{DateTime}
     
     yy = Int64(nc.attrib["year"])
     mm = Int64(nc.attrib["month"])
     dd = Int64(nc.attrib["day"])
-    hr_time = float.(nc["time"])
+    hr_time = float.(nc[time_var])
 
     return convert_time2DateTime(yy, mm, dd, hr_time)
 end
+# ----/
 
+# ***************************************************************
+# Read Cloudnet Ice water content IWC file
+"""
+# Read Cloudnet Ice water content IWC file
+
+> iwc = readIWCFile(nfile::String; modelreso=false)
+
+"""
 function readIWCFile(nfile::String; modelreso=false)
 
     @assert isfile(nfile) error("$nfile cannot be found!")
@@ -126,16 +115,26 @@ function readIWCFile(nfile::String; modelreso=false)
 
     # Adding computed variables:
     # integration of iwc only for pixels with flag=1 or 2:
-    var_output[:IWV] = let tmp = var_output[:iwc]
+    # Cloudnetpy units iwc [kg m⁻³] and height [m]
+    var_output[:IWP] = let tmp = 1f3var_output[:iwc]
 
         @. tmp[!(0 < var_output[:flag] < 3)] = NaN
-        ∫f(tmp, var_output[:height])
+        # IWP [g m⁻²]
+        ∫fdh(tmp, var_output[:height])
     end
     
     return var_output
 end
+# ----/
 
+# ***************************************************************
+# Read Liquid water content LWC file
+"""
+# Read Liquid water content LWC file
 
+> lwc = readLWCFile(nfile::String; modelreso=false)
+
+"""
 function readLWCFile(nfile::String; modelreso=false)
 
     @assert isfile(nfile) error("$nfile cannot be found!")
@@ -181,7 +180,16 @@ function readLWCFile(nfile::String; modelreso=false)
 end
 # ----/
 
+# ******************************************************************
+# Reading Classification & Categorize files both at once:
+"""
+# Fuction to read Cloudnet classification or category files:
 
+> classi = readCLNFile(nfile::String; modelreso=false)
+
+if optional parameter modelreso=true, then the model variables are
+interpolated from hourly resolution to Cloudnet resolution.
+"""
 function readCLNFile(nfile::String; modelreso=false)
     @assert isfile(nfile) error("$nfile cannot be found!")
     if contains(nfile, "categorize")
@@ -256,9 +264,11 @@ function readCLNFile(nfile::String; modelreso=false)
         model_time = float.(nc["model_time"])
         model_height = nc["model_height"][:]
         if !modelreso
-            var_output[:model_time] = model_time
+            var_output[:model_time] = convert_time2DateTime(nc, time_var="model_time")
             var_output[:model_height] = model_height
         else
+            # To convert model_time to cloudnet time, model_time needs to be
+            # a Vector with elements containing the fraction of day: 
             var_output = ConvertModelResolution(var_output,
                                                 model_time,
                                                 model_height;
@@ -271,41 +281,37 @@ function readCLNFile(nfile::String; modelreso=false)
     
     # For Classification dataset:
     classfile = replace(nfile, "categorize" => "classific")
-    @assert isfile(classfile) errro("$classfile cannot be found!")
-    NCDataset(classfile; format=:netcdf4_classic) do nc
+    if isfile(classfile)
+    
+        NCDataset(classfile; format=:netcdf4_classic) do nc
         
-        [var_output[x] = nc[vars_classific[x]][:,:] for x ∈ keys(vars_classific)];
+            [var_output[x] = nc[vars_classific[x]][:,:] for x ∈ keys(vars_classific)];
         
+        end
+    else
+        @warn("$(classfile) cannot be found and not loaded!")
     end
-
     
     return var_output;
 
 end  # end of function
 # ----/
 
-# ***************************************************
-# Function to normalize matrix to [0,1]
-# in case the input variable has log units (e.g. dBz),
-# then the optional parameter could be isdB=true to treat
-# input array as a linear variable, the output is based on
-# the non-logarithm variable.
-#
-function TransformZeroOne(X::T; isdB=false) where T<:AbstractArray
-    
-    nonans = .!isnan.(X)
-    if isdB
-        X = @. 10^(X/10)
-    end
-    x₀, x₁ = extrema(X[nonans])
-    Xout = (X .- x₀)./(x₁ - x₀);
-
-    return Xout
-end  # end of function
-# ----/
-
 # *********************************************************
 # Interpolate Meteo data from Model to CloudNet resolution
+"""
+# Interpolate Meteo data from Model to CloudNet resolution.
+
+> var_out = ConvertModelResolution(cln_in::Dict{Symbol, Any},
+                                   model_time::Vector{Float32},
+                                   model_height::Vector{Float32};
+                                   cln_time=nothing,
+                                   cln_height=nothing)
+
+the output containg the model variables :T, :Pa, :UWIND, :VWIND, :QV
+but at the same resolution as cloudnet.
+
+"""
 function ConvertModelResolution(cln_in::Dict{Symbol, Any},
                                 model_time::Vector{Float32},
                                 model_height::Vector{Float32};
@@ -335,6 +341,233 @@ function ConvertModelResolution(cln_in::Dict{Symbol, Any},
 end
 # ----/
 
+# ------------------------------------------------------
+# AUX FUNCTIONS
+# ------------------------------------------------------
 
-end  # end of Module
+# *******************************************************
+# Integration of variable (height, time) over altitudes (dims=1)
+"""
+Integration of matrix x over dims=1 skipping NaN, optionally
+the integration is perform with respect of vector dh.
+USAGE:
+
+Xt = ∫fdh(xi::Matrix)
+Xt = ∫fdh(xi::Matrix; dh::Vector)
+
+"""
+function ∫fdh(x::AbstractArray, dx::AbstractVector)
+    δx = Vector{eltype(x)}(undef, length(dx)) .= 0
+    δx[2:end] = dx |> diff
+    δx[1] =  δx[2:end] |> minimum
+
+    x[isnan.(x)] .= 0.0
+    
+    return sum(x.*δx, dims=1) |> vec
+end
+#----/
+
+# ***************************************************
+# Function to normalize matrix to [0,1]
+# in case the input variable has log units (e.g. dBz),
+# then the optional parameter could be isdB=true to treat
+# input array as a linear variable, the output is based on
+# the non-logarithm variable.
+#
+function TransformZeroOne(X::T; isdB=false) where T<:AbstractArray
+    
+    nonans = .!isnan.(X)
+    if isdB
+        X = @. 10^(X/10)
+    end
+    x₀, x₁ = extrema(X[nonans])
+    Xout = (X .- x₀)./(x₁ - x₀);
+
+    return Xout
+end  # end of function
+# ----/
+
+# ***************************************************
+# Function to mimic meshgrid MATLAB
+function mymeshgrid(x::Vector, y::Vector)
+    nx = length(x)
+    ny = length(y)
+
+    return ones(ny).*x', y.*ones(nx)'
+end
+# ----/
+
+end  # end of Module CloudnetTools
+
+# ******************************************************************
+# +++++++++++++++ MODULE CloudnetViz  ++++++++++++++++++++++++++++++
+# ******************************************************************
+
+module CloudnetViz
+
+using Plots
+using Dates
+using Printf
+using LaTeXStrings
+
+function show_LWP_IWP(iwc::Dict, liq::Dict)
+    p1=plot(iwc[:time], iwc[:height], log10.(1f3iwc[:iwc]), st=:heatmap, color=:lapaz);
+    p2=plot(liq[:time], liq[:height], log10.(liq[:lwc]), st=:heatmap, color=:tokyo);
+    plot(p1,p2, layout=(2,1));
+end
+
+function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=true)
+
+    # finding index for maximum height:
+    
+    tm_tick = cnt[:time][1]:Minute(60):cnt[:time][end];
+
+    Xstrname = "TIME UTC from "*Dates.format(cnt[:time][2], "dd.u.yyyy")
+
+    strtitle = (tm_tick[1], 7.5, text("CloudNet Target Classification "*SITENAME, 11, halign=:left))
+    strtitle = "CloudNet Target Classification "*SITENAME
+    
+    cldnet = CloudNetPalette("classific")
+    l = grid(2,1, heights=(0.2,0.8)) #[a{0.25h}; b];
+    Y_LIM = (0, maxhgt)
+    
+    classplt = plot(cnt[:time], 1f-3cnt[:height], cnt[:CLASSIFY],
+                    st=:heatmap, colorbar = false, framestyle = :box,
+                    color=palette(cldnet, 11), ylim=Y_LIM, clim=(0,10),
+                    #ann = stringtitle,
+                    ylabel="Height A.G.L. [km]", ytickfontsize=11, yminorticks=true,
+                    xlabel= Xstrname, tick_direction=:out, 
+                    xticks=(tm_tick, Dates.format.(tm_tick, "H:MM")), xrot=45,
+                    xtickfontsize=11, xguidefont=font(12), title=strtitle);
+
+    # Preparing to add graphs for isotherms and wind vectors:
+    ihmax = findlast(1f-3cnt[:model_height] .≤ maxhgt)
+    Xin = Vector(1:length(cnt[:model_time]))
+    Yin = 1f-3cnt[:model_height]
+    
+    TLEV = [5, 0, -5, -10, -15, -20, -25, -30]
+    BB = bbox(0,0,1,1)
+    pcT = contour!(Xin, Yin[1:ihmax], cnt[:T][1:ihmax, :] .- 273.15,
+                   levels = TLEV, ylim=Y_LIM, ticks=:none,
+                   linecolor=:black, alpha=:.5, lw=1, contour_labels = true,
+                   axis=false, colorbar=:none, subplot=2, inset=(1,BB), 
+                   background_color_subplot=:transparent);
+
+
+    TT, HH, UU, VV = prepare_quiver(Xin[1:2:end], Yin[2:4:ihmax],
+                                    cnt[:UWIND][2:4:ihmax, 1:2:end],
+                                    cnt[:VWIND][2:4:ihmax, 1:2:end])
+    
+    pcW = quiver!(TT[:], HH[:], quiver=(UU[:],VV[:]),
+                  ylim=Y_LIM, axis=false, color=:gray, alpha=0.3,
+                  ticks=:none, shape=:none, inset=(1,BB), subplot=3,
+                  background_color_subplot=:transparent);
+    
+    if showlegend
+        classleg = ShowLegendCloudNetClassification("classific")
+
+        pltout = plot(classleg, classplt, layout=l, size=(800,700))
+    else
+        pltout = plot(classplt, size=(800,500))
+    end
+
+    return pltout
+end
+
+function CloudNetPalette(ColorType::String)
+    if ColorType == "classific"
+        tmp = [
+            (1.00,  1.0 ,  1.00);
+            (0.44,  1.0 ,  0.92);
+            (0.17,  0.62,  0.95);
+            (0.75,  0.6 ,  1.0);
+            (0.9 ,  0.9 ,  0.92);
+            (0.28,  0.27,  0.72);
+            (0.99,  0.65,  0.0);
+            (0.78,  0.98,  0.19);
+            (0.8 ,  0.73,  0.53);
+            (0.89,  0.29,  0.13);
+            (0.7 ,  0.21,  0.34)
+        ];
+    elseif ColorType == "detection"
+        tmp = [
+            (0.247,  0.704,  0.43);
+            (0.44 ,  0.926,  0.34); 
+            (0.996,  0.91 ,  0.24);
+            (0.8  ,  0.96 ,  0.96); 
+            (0.455,  0.51 ,  0.41); 
+            (0.89 ,  0.292,  0.13);
+        ];
+    else
+        error("$ColorType not supported!")
+    end
+    cldnet = map(x->RGB(x...), tmp);
+    return cldnet
+end
+
+function ShowLegendCloudNetClassification(LegendType::String)
+    if LegendType == "classific"
+        txt_labels = [
+            (40, 1,"Clear sky", "Clear sky"),
+            (0, 1,"Liquid drops", "Cloud liquid droplets only"), 
+            (20, 1,"Drizzle | Rain", "Drizzle or rain"), 
+            (20, 2,"Drizzle & Cloud", "Drizzle or rain coexisting with cloud liquid droplets"),
+            (0, 3,"Ice", "Ice particles"), 
+            (0, 2, "SLC & Ice", "Ice coexisting with supercooled liquid droplets"),
+            (20, 3,"Melting", "Melting ice particle"),
+            (20, 4,"Melting & cloud", "Melting ice particles coexisting with cloud liquid droplets"), 
+            (40, 2,"Aerosol", "Aerosol particles/no cloud or precipitation"), 
+            (40, 3,"Insects", "Insects/no cloud or precipitation"), 
+            (40, 4,"Aerosol & Insects", "Aerosol coexisting with insects/no cloud or precipitation")
+        ];
+    elseif LegendType == "detection"
+        txt_labels = [
+            (1, 1, "Ra + Li", "Good Radar & Lidar");
+            (1, 2, "Ra", "Good Radar Echo"); 
+            (4, 1, "Li", "Lidar Echo Only");
+            (4, 2, "Ra + Att", "Radar corrected \nfor liquid attenuation");
+            (7, 1, "Ra - Att", "Radar uncorrected \nfor liquid attenuation");
+            (7, 2, "Ra clutter", "Radar ground clutter")
+        ];
+    else
+        error("$LegendType not supported!")
+    end 
+    cldnet = CloudNetPalette(LegendType)
+
+    scatter(map(x->(x[1], 1.5x[2]), txt_labels),
+            marker=:square, grid=:false, markerstroke=:none,
+            framestyle=:none, widen=true,
+            markersize=8, markercolor=cldnet, legend=false, axis=false,
+            clipping=:false, xlim=(-0.1, 60), ylim=(0, 8)); #1+maximum(txt_labels)[2]));
+    
+    tmp = map(x->(x[1]+1.5, 1.5x[2], text(x[3], 11, :left)), txt_labels) |> annotate!;
+
+    return tmp
+end
+
+# ************************************************************
+# ++++++++++ AUXILIARY FUNCTIONS FOR VISUALIZATION +++++++++++
+# ************************************************************
+
+# ************************************************************
+# Prepare vectors to be used with quiver
+using ..CloudnetTools
+
+function prepare_quiver(x::Vector, y::Vector, u::Matrix, v::Matrix; factor=2)
+
+    # 2D meshing of coordinates:
+    X, Y = CloudnetTools.mymeshgrid(x, y)
+
+    # normalizing the wind variables
+    UU, VV = let WS = @. factor*sqrt(u^2 + v^2)
+    
+        u./WS, v./WS
+    end
+
+    return X, Y, UU, VV
+    
+end
+
+end  # end of Module CloudnetViz
+
 # --end of script
