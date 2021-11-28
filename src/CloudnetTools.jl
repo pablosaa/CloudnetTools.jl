@@ -59,7 +59,8 @@ function convert_time2DateTime(yy::Int64, mm::Int64, dd::Int64, hr_time::Abstrac
     return @. DateTime(yy, mm, dd, hh, mi, ss, ms)
 end
 function convert_time2DateTime(nc; time_var="time")::Vector{DateTime}
-    
+
+    eltype(nc[time_var]) <: DateTime && (return nc[time_var])
     yy = Int64(nc.attrib["year"])
     mm = Int64(nc.attrib["month"])
     dd = Int64(nc.attrib["day"])
@@ -195,7 +196,7 @@ function readCLNFile(nfile::String; modelreso=false)
     if contains(nfile, "categorize")
         println("reading Categorize file")
     elseif contains(nfile, "classific")
-        println("readin Classification file")
+        println("reading Classification file")
     else
         error("$nfile does not apear to be a Cloudnet file!")
     end
@@ -209,6 +210,7 @@ function readCLNFile(nfile::String; modelreso=false)
         :ωV => "width",
         # LIDAR
         :β => "beta",
+        :δ => "depol",
         #MWR
         :LWP => "lwp",
         #CLOUDNETpy
@@ -216,6 +218,7 @@ function readCLNFile(nfile::String; modelreso=false)
         :QUALBITS => "quality_bits",
         :CATEBITS => "category_bits",
         #MODEL
+        :model_height => "model_height",
         :T => "temperature",
         :Tw => "Tw",
         :Pa => "pressure",
@@ -224,11 +227,6 @@ function readCLNFile(nfile::String; modelreso=false)
         :VWIND => "vwind",
     )
 
-    # Classification variables to read:
-    vars_classific = Dict(
-        :CLASSIFY => "target_classification",
-        :DETECTST =>"detection_status",
-    )
 
     # Defining Output varaible:
     var_output = Dict{Symbol, Any}()
@@ -241,8 +239,10 @@ function readCLNFile(nfile::String; modelreso=false)
         var_output[:height] = nc["height"][:]
 
       
-        for inkey ∈ keys(vars_categorize)
-            x = vars_categorize[inkey]
+        for (inkey, x) ∈ vars_categorize
+            #x = vars_categorize[inkey]
+            !haskey(nc, x) && continue
+
             println(x)
             tmp = nc[x][:,:]
             if haskey(nc[x].attrib, "missing_value")
@@ -261,31 +261,44 @@ function readCLNFile(nfile::String; modelreso=false)
 
         # If modelreso = true, interpolate model data to cloudnet resolution:
 
-        model_time = float.(nc["model_time"])
-        model_height = nc["model_height"][:]
+        haskey(nc, "model_time") && (var_output[:model_time] = convert_time2DateTime(nc, time_var="model_time"))
+
+        #(model_time = float.(nc["model_time"]))
+        #model_time = float.(nc["model_time"])
+        #model_height = nc["model_height"][:]
         if !modelreso
-            var_output[:model_time] = convert_time2DateTime(nc, time_var="model_time")
-            var_output[:model_height] = model_height
+            
+            #var_output[:model_height] = model_height
         else
             # To convert model_time to cloudnet time, model_time needs to be
-            # a Vector with elements containing the fraction of day: 
-            var_output = ConvertModelResolution(var_output,
-                                                model_time,
-                                                model_height;
-                                                cln_time=tmp_time)
+            # a Vector with elements containing the fraction of day:
+            model_time = let x = haskey(var_output, :model_time)
+                x ? var_output[:model_time] : var_output[:time]
+            end
+            
+            ConvertModelResolution(var_output,
+                                   model_time,
+                                   var_output[:model_height])
+            #    cln_time=tmp_time)
         end
 
     end
 
-    
-    
+        
     # For Classification dataset:
+    # Classification variables to read
+    vars_classific = Dict(
+        :CLASSIFY => "target_classification",
+        :DETECTST =>"detection_status",
+    )
+
     classfile = replace(nfile, "categorize" => "classific")
+
     if isfile(classfile)
     
         NCDataset(classfile; format=:netcdf4_classic) do nc
-        
-            [var_output[x] = nc[vars_classific[x]][:,:] for x ∈ keys(vars_classific)];
+            [var_output[k] = nc[v][:,:] for (k,v) ∈ vars_classific if haskey(nc, v)]
+            #[var_output[x] = nc[vars_classific[x]][:,:] for x ∈ keys(vars_classific)];
         
         end
     else
@@ -313,12 +326,22 @@ but at the same resolution as cloudnet.
 
 """
 function ConvertModelResolution(cln_in::Dict{Symbol, Any},
-                                model_time::Vector{Float32},
-                                model_height::Vector{Float32};
+                                model_time::Vector{Any},
+                                model_height::Vector{Real};
                                 cln_time=nothing,
                                 cln_height=nothing)
 
-    nodes = (model_height, model_time)
+
+    # creating modes for interpolation depending on typeof model_time:
+    if eltype(model_time) <: DateTime
+        model_ts = let ts = model_time
+            @. hours(ts) + minute(ts)/60 + seconds(ts)/3600
+        end
+        nodel = (model_height, model_ts)
+    else
+        nodes = (model_height, model_time)
+    end
+        
     if isnothing(cln_time)
         let ts = cln_in[:time]
             cln_time = @. hour(ts) + minute(ts)/60 + seconds(ts)/3600
@@ -416,11 +439,26 @@ function show_LWP_IWP(iwc::Dict, liq::Dict)
     plot(p1,p2, layout=(2,1));
 end
 
+# *********************************************************************
+# Function to plot the Classification data
+"""
+# Function to plot the Classification data
+
+> show_classific(cnt::Dict; 
+
+WHERE:
+* cnt::Dict dictionary ouput from read_CNTfile(cloudnet_file),
+* SITENANE::String (optional) string with name of site,
+* maxhgt::Number (optional) indicating the maximum height in km, default=8,
+* showlegend::Bool (optional) show Cloudnet legend colors, default=true
+* addons::Bool to add meteo data to the plot, "wind" & "temp", default=true
+Output:
+* plt::Plot output plot object.
+"""
 function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=true)
 
-    # finding index for maximum height:
-    
-    tm_tick = cnt[:time][1]:Minute(60):cnt[:time][end];
+    # defining time axis ticks:
+    tm_tick = cnt[:time][1]:Minute(90):cnt[:time][end];
 
     Xstrname = "TIME UTC from "*Dates.format(cnt[:time][2], "dd.u.yyyy")
 
@@ -434,41 +472,41 @@ function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=true)
     classplt = plot(cnt[:time], 1f-3cnt[:height], cnt[:CLASSIFY],
                     st=:heatmap, colorbar = false, framestyle = :box,
                     color=palette(cldnet, 11), ylim=Y_LIM, clim=(0,10),
-                    #ann = stringtitle,
-                    ylabel="Height A.G.L. [km]", ytickfontsize=11, yminorticks=true,
+                    ylabel="Height A.G.L. [km]", ytickfontsize=11, minorticks=true,
                     xlabel= Xstrname, tick_direction=:out, 
                     xticks=(tm_tick, Dates.format.(tm_tick, "H:MM")), xrot=45,
                     xtickfontsize=11, xguidefont=font(12), title=strtitle);
 
     # Preparing to add graphs for isotherms and wind vectors:
     ihmax = findlast(1f-3cnt[:model_height] .≤ maxhgt)
-    Xin = Vector(1:length(cnt[:model_time]))
+
+    
+    Xin = haskey(cnt, :model_time) ? Vector(1:length(cnt[:model_time])) : round.(Int64, range(1, stop=length(cnt[:time]), length=25))
+    
     Yin = 1f-3cnt[:model_height]
-    
-    TLEV = [5, 0, -5, -10, -15, -20, -25, -30]
+    #TLEV = [5, 0, -5, -10, -15, -20, -25, -30]
     BB = bbox(0,0,1,1)
-    pcT = contour!(Xin, Yin[1:ihmax], cnt[:T][1:ihmax, :] .- 273.15,
-                   levels = TLEV, ylim=Y_LIM, ticks=:none,
-                   linecolor=:black, alpha=:.5, lw=1, contour_labels = true,
-                   axis=false, colorbar=:none, subplot=2, inset=(1,BB), 
-                   background_color_subplot=:transparent);
-
-
-    TT, HH, UU, VV = prepare_quiver(Xin[1:2:end], Yin[2:4:ihmax],
-                                    cnt[:UWIND][2:4:ihmax, 1:2:end],
-                                    cnt[:VWIND][2:4:ihmax, 1:2:end])
     
-    pcW = quiver!(TT[:], HH[:], quiver=(UU[:],VV[:]),
-                  ylim=Y_LIM, axis=false, color=:gray, alpha=0.3,
-                  ticks=:none, shape=:none, inset=(1,BB), subplot=3,
-                  background_color_subplot=:transparent);
+    Attach_Isotherms(classplt, Xin, Yin[1:ihmax], cnt[:T][1:ihmax, Xin] .- 273.15,
+                     (1, BB), 2, TLEV = [5, 0, -5, -10, -15, -20, -25, -30])
+    
+
+    Attach_Windvector(classplt, Xin[1:2:end], Yin[2:4:ihmax],
+                      cnt[:UWIND][2:4:ihmax, Xin[1:2:end]],
+                      cnt[:VWIND][2:4:ihmax, Xin[1:2:end]],
+                      (1, BB), 3)
+
+    #
+    #θv = @. cnt[:T][1:ihmax,2:2:end]*(1024f0/cnt[:Pa][1:ihmax,2:2:end])^0.286;
+    
+    #Attach_Profile_Cascate(classplt, Xin[2:2:end], Yin[1:ihmax], θv, (1,BB), 4)
     
     if showlegend
         classleg = ShowLegendCloudNetClassification("classific")
 
         pltout = plot(classleg, classplt, layout=l, size=(800,700))
     else
-        pltout = plot(classplt, size=(800,500))
+        pltout = plot(classplt, size=(800,600))
     end
 
     return pltout
@@ -508,6 +546,7 @@ end
 function ShowLegendCloudNetClassification(LegendType::String)
     if LegendType == "classific"
         txt_labels = [
+            #X, Y, "short_name", "long_name"
             (40, 1,"Clear sky", "Clear sky"),
             (0, 1,"Liquid drops", "Cloud liquid droplets only"), 
             (20, 1,"Drizzle | Rain", "Drizzle or rain"), 
@@ -544,6 +583,48 @@ function ShowLegendCloudNetClassification(LegendType::String)
 
     return tmp
 end
+# ----/
+
+function Attach_Isotherms(pltin, Xin, Yin, Zvar, BB, sp; maxhgt=(0,8), TLEV=10)
+    #TLEV = [5, 0, -5, -10, -15, -20, -25, -30]
+    
+    Plots.contour!(pltin, Xin, Yin, Zvar,
+                   levels = TLEV, ylim=maxhgt, xlim = extrema(Xin), ticks=:none,
+                   linecolor=:black, alpha=:.5, lw=1, contour_labels = true,
+                   axis=false, colorbar=:none, subplot=sp, inset=BB, 
+                   background_color_subplot=:transparent);
+
+    return pltin
+end
+# ----/
+
+# **********************************************************
+# Subroutine to attach the wind vector to plot
+function Attach_Windvector(pltin, Xin, Yin, Uin, Vin, BB, sp; maxhgt=(0,8))
+
+    TT, HH, UU, VV = prepare_quiver(Xin, Yin, Uin, Vin)
+    
+    Plots.quiver!(pltin, TT[:], HH[:], quiver=(UU[:],VV[:]),
+                  ylim=maxhgt, axis=false, color=:gray, alpha=0.3,
+                  ticks=:none, shape=:none, inset=BB, subplot=sp,
+                  background_color_subplot=:transparent);
+
+    return pltin
+end
+# ----/                                
+                                
+# ***********************************************************
+# Subroutine to create cascate plot of profile variables
+function Attach_Profile_Cascate(pltin, ts, hkm, Z, BB, sp; maxhgt=(0, 8), δts=1.5)
+
+    Znn = normalize_2Dvar(Z, δx=δts);
+    Plots.plot!(pltin, Znn .+ ts', hkm, xlim=extrema(ts), ylim=maxhgt,
+                color=:lightblue, legend=false, axis=:none, ticks=:none,
+                inset=BB, background_color_subplot=:transparent, subplot=sp)
+
+    return pltin
+end
+# ----/
 
 # ************************************************************
 # ++++++++++ AUXILIARY FUNCTIONS FOR VISUALIZATION +++++++++++
@@ -567,6 +648,23 @@ function prepare_quiver(x::Vector, y::Vector, u::Matrix, v::Matrix; factor=2)
     return X, Y, UU, VV
     
 end
+# ----/
+
+# ****************
+function normalize_2Dvar(X::Matrix; δx=1.5)
+
+    δx < 1 && error("Optional input δx needs to be ≥ 1")
+    T01 = [];
+    for T ∈ eachcol(X)
+        let lims = extrema(T)
+            (2(T .- lims[1])./(lims[2] - lims[1]) .- 1)δx |> x->push!(T01, x)
+            #push!(T01, (T .- lims[1])./(lims[2] - lims[1]) |> v-> (2δx.*v) .- δx)
+        end
+    end
+    return hcat(T01...)
+end
+# ----/
+
 
 end  # end of Module CloudnetViz
 
