@@ -8,7 +8,9 @@ function hsrl2nc(lidar_file::String, output_path::String)
     if !isfile(lidar_file)
         error("$lidar_file does not exist!")
     end
-
+    
+    SITE = "arm-nsa"
+    
     lidar = ARMtools.getLidarData(lidar_file)
 
     
@@ -185,13 +187,12 @@ function hsrl2nc(lidar_file::String, output_path::String)
     β_smooth[isnan.(β_smooth)] .= NCDatasets.fillvalue(eltype(β));
 
     # Creating cloudnetpy input netCDF file:
-    ARM_OUTPATH = output_path;
     arm_year = year(lidar[:time][1])
     arm_month = month(lidar[:time][1])
     arm_day = day(lidar[:time][1])
     
-    ARM_OUTFILE = @sprintf("arm_lidar_%04d%02d%02d.nc", arm_year, arm_month, arm_day);
-    outputfile = joinpath(ARM_OUTPATH, ARM_OUTFILE);
+    ARM_OUTFILE = @sprintf("%04d%02d%02d_%s_lidar.nc", arm_year, arm_month, arm_day, SITE);
+    outputfile = joinpath(output_path, ARM_OUTFILE);
     ds = NCDataset(outputfile, "c", attrib = OrderedDict(
         "Conventions"               => "CF-1.7",
         "cloudnetpy_version"        => "1.3.2",
@@ -277,7 +278,8 @@ function hsrl2nc(lidar_file::String, output_path::String)
 
     return nothing
 end
+#----/
 # end of Function
-###
+
 
 

@@ -2,16 +2,14 @@ function kazr2nc(radar_file::String, output_path::String)
 
     # Script to adapt ARM KAZR radar to netCDF input for cloudnetpy
     # 
-
     # Reading input ARM netCDF file:
-
+    SITE = "arm-nsa"
+    
     if !isfile(radar_file)
         error("$radar_file does not exist!")
     end 
 
-
     radar = ARMtools.getKAZRData(radar_file)
-
 
     time = radar[:time];
     arm_year  = year(time[1])
@@ -40,14 +38,13 @@ function kazr2nc(radar_file::String, output_path::String)
     file_time = hour.(time) + minute.(time)/60 + second.(time)/3600;
 
     # Creating output file for CloudNetpy
-    ARM_OUTPATH = output_path;
-    ARM_OUTFILE = @sprintf("arm_radar_%04d%02d%02d.nc", arm_year, arm_month, arm_day);
-    outputfile = joinpath(ARM_OUTPATH, ARM_OUTFILE);
+    ARM_OUTFILE = @sprintf("%04d%02d%02d_%s_radar.nc", arm_year, arm_month, arm_day,SITE);
+    outputfile = joinpath(output_path, ARM_OUTFILE);
 
     ds = NCDataset(outputfile, "c", attrib = OrderedDict(
         "Conventions"               => "CF-1.7",
         "cloudnetpy_version"        => "1.3.2",
-        "file_uuid"                 => file_uuid, #"58bccd4053f74be385d527a4cb335d9b",
+        "file_uuid"                 => file_uuid,
         "cloudnet_file_type"        => "radar",
         "title"                     => "ARSCL Radar data made by Julia",
         "year"                      => Int16(arm_year),
@@ -179,9 +176,9 @@ function kazr2nc(radar_file::String, output_path::String)
     ncwidth[:] = radar[:SPW];
     ncldr[:] = LDR;
     ncSNR[:] = radar[:SNR];
-    nclatitude[:] = radar[:lat] #itude[1];
-    nclongitude[:] = radar[:lon] #gitude[1];
-    ncaltitude[:] = radar[:alt] #itude[1];
+    nclatitude[:] = radar[:lat]
+    nclongitude[:] = radar[:lon]
+    ncaltitude[:] = radar[:alt]
     nctime[:] = file_time;
     ncrange[:] = radar[:height];
     ncradar_frequency[:] = radar_frequency;
@@ -197,11 +194,6 @@ function kazr2nc(radar_file::String, output_path::String)
 
     return nothing
 end
-# end of function
+#----/
+#end of function
 
-#arm_year = 2017;
-#arm_month = 11;
-#arm_day = 9;
-#DATA_PATH = "/home/psgarfias/LIM/data/utqiagvik-nsa/KARZ/ARSCL/";
-#DATA_NAME = @sprintf("nsaarsclkazr1kolliasC1.c0.%04d%02d%02d.000000.nc", #arm_year, arm_month, arm_day);
-#radar_file = joinpath(DATA_PATH, DATA_NAME);

@@ -4,11 +4,11 @@ function lidar2nc(lidar_file::String, output_path::String)
         error("$lidar_file does not exist!")
     end
 
+    SITE = "arm-nsa"
+    
     # Reading input ARM netCDF file:
     lidar = ARMtools.getLidarData(lidar_file)
     
-    
-
     time = lidar[:time];
     arm_year = year(time[1])
     arm_month = month(time[1])
@@ -58,9 +58,8 @@ function lidar2nc(lidar_file::String, output_path::String)
 
     # Creating cloudnetpy input netCDF file:
     # Creating output file for CloudNetpy
-    ARM_OUTPATH = output_path;
-    ARM_OUTFILE = @sprintf("arm_lidar_%04d%02d%02d.nc", arm_year, arm_month, arm_day);
-    outputfile = joinpath(ARM_OUTPATH, ARM_OUTFILE);
+    ARM_OUTFILE = @sprintf("%04d%02d%02d_%s_lidar.nc", arm_year, arm_month, arm_day,SITE);
+    outputfile = joinpath(output_path, ARM_OUTFILE);
     
     ds = NCDataset(outputfile, "c", attrib = OrderedDict(
         "Conventions"               => "CF-1.7",
@@ -148,16 +147,6 @@ function lidar2nc(lidar_file::String, output_path::String)
 
     return nothing
 end
+# ----/
+# end of function
 
-#using NCDatasets, DataStructures
-#using UUIDs
-#using Dates
-#using Printf, Statistics
-#
-#
-#arm_year = 2017;
-#arm_month = 11;
-#arm_day = 9;
-#DATA_PATH = "/home/psgarfias/LIM/data/utqiagvik-nsa/CEIL10m/";
-#DATA_NAME = @sprintf("nsaceil10mC1.b1.%04d%02d%02d.000008.nc", arm_year, #arm_month, arm_day);
-#lidar_file = joinpath(DATA_PATH, DATA_NAME);

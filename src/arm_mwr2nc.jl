@@ -2,16 +2,16 @@ function mwr2nc(mwr_file::String, output_path::String)
 
     mwr = ARMtools.getMWRData(mwr_file)
 
+    SITE = "arm-nsa"
     # Aux variables:
     file_time = @. Second(mwr[:time] - DateTime(2001,1,1,0,0,0));
 
     # Creating output file for CloudNetpy
-    ARM_OUTPATH = output_path;
     arm_year = year(mwr[:time][1])
     arm_month = month(mwr[:time][1])
     arm_day = day(mwr[:time][1])
-    ARM_OUTFILE = @sprintf("arm_mwr_%04d%02d%02d.nc", arm_year, arm_month, arm_day);
-    outputfile = joinpath(ARM_OUTPATH, ARM_OUTFILE);
+    ARM_OUTFILE = @sprintf("%04d%02d%02d_%s_mwr.nc", arm_year, arm_month, arm_day, SITE);
+    outputfile = joinpath(output_path, ARM_OUTFILE);
     ds = NCDataset(outputfile, "c", attrib = OrderedDict(
         "netCDF_convention"         => " CF-1.0",
         "radiometer_location"       => "Utqiagvik",
@@ -21,8 +21,8 @@ function mwr2nc(mwr_file::String, output_path::String)
         "station_longitude"         => "$(mwr[:lon])", #"9.9�' West",
         "station_latitude"          => "$(mwr[:lat])", #"53.33�' North",
         "comments"                  => "Made it by Julia",
-        "radiometer_software_version" => "dummy",
-        "host_PC_software_version"  => "dummy",
+        "radiometer_software_version" => "none",
+        "host_PC_software_version"  => "none",
     ))
 
     # Dimensions
