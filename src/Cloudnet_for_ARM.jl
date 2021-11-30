@@ -13,10 +13,10 @@ using ImageFiltering
 using UUIDs
 
 # Including transformation functions: from ARM files to Cloudnet input files.
-Base.include("arm_mwr2nc.jl")
-Base.include("arm_lidar2nc.jl")
-Base.include("arm_kazr2nc.jl")
-Base.include("arm_hsrl2nc.jl")
+Base.include(Cloudnet4ARM, "arm_mwr2nc.jl")
+Base.include(Cloudnet4ARM, "arm_lidar2nc.jl")
+Base.include(Cloudnet4ARM, "arm_kazr2nc.jl")
+Base.include(Cloudnet4ARM, "arm_hsrl2nc.jl")
 
 function model2nc(infile::String, output_path::String)
 
