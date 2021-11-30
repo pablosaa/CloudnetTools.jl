@@ -418,8 +418,8 @@ end  # end of Module CloudnetTools
 # ****************************************************
 # Including further files:
 # * For plotting CloudNet products:
-include("CloudnetVisualization.jl")
+Base.include("CloudnetVisualization.jl")
 
-include("Cloudnet_for_ARM.jl")
+Base.include("Cloudnet_for_ARM.jl")
 
 # --end of script
