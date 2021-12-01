@@ -1,7 +1,10 @@
 # Part of CloudnetTools.jl
 # Module including tools and functions to work with ARM data
+# ******************************************************************
+# +++++++++++++++ MODULE ARM for working with arm data files +++++++
+# ******************************************************************
 
-module Cloudnet4ARM
+module ARM
 
 using ARMtools
 using NCDatasets, DataStructures
@@ -13,11 +16,29 @@ using ImageFiltering
 using UUIDs
 
 # Including transformation functions: from ARM files to Cloudnet input files.
-Base.include(Cloudnet4ARM, "arm_mwr2nc.jl")
-Base.include(Cloudnet4ARM, "arm_lidar2nc.jl")
-Base.include(Cloudnet4ARM, "arm_kazr2nc.jl")
-Base.include(Cloudnet4ARM, "arm_hsrl2nc.jl")
+Base.include(ARM, "arm_mwr2nc.jl")
+Base.include(ARM, "arm_lidar2nc.jl")
+Base.include(ARM, "arm_kazr2nc.jl")
+Base.include(ARM, "arm_hsrl2nc.jl")
 
+
+# *****************************************************************
+"""
+Function to convert model input data.
+To convert the file _armradar.20180121.nc_ into CloudNet input file:
+
+USAGE:
+
+>result = ARM.model2nc("/data/ECMWF/20180121_arm-nsa_ecmwf.nc", "/data/output")
+
+NOTE:
+This function is still dummy. When ECMWF input file is provides, it only copies
+that file to the ouput_path where other Cloudnet input files should be located.
+In the future, ARM radiosonde data will be processed as model data and converted
+to Cloudnet input.
+    
+    (c) Pablo Saavedra G.
+"""
 function model2nc(infile::String, output_path::String)
 
     !contains(infile, "ecmwf") && (return missing)
@@ -44,11 +65,11 @@ USAGE:
 function ARMconverter(the_key::Symbol, arm_filenc::String, out_path::String)
     # Here the values of dictionary keys needs to be replaces by ARM data converter function:
     list_of_func = Dict(
-        :radar => Cloudnet4ARM.kazr2nc,
-        :lidar => Cloudnet4ARM.hsrl2nc,
-        :radiometer => Cloudnet4ARM.mwr2nc,
-        :model => Cloudnet4ARM.model2nc,
-        :ceilometer => Cloudnet4ARM.lidar2nc
+        :radar => ARM.kazr2nc,
+        :lidar => ARM.hsrl2nc,
+        :radiometer => ARM.mwr2nc,
+        :model => ARM.model2nc,
+        :ceilometer => ARM.lidar2nc
     );
 
     !isdir(out_path) && mkpath(out_path);
@@ -85,7 +106,7 @@ function ARMconverter(yy, mm, dd, thekey::Symbol, input_params::Dict; owndir=tru
 end
 # ----/
 
-end  # end of module
+end  # end of module ARM
 # ----/
 
 # end of file

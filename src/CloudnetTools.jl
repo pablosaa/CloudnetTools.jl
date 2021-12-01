@@ -53,7 +53,8 @@ function convert_time2DateTime(yy::Int64, mm::Int64, dd::Int64, hr_time::Abstrac
 end
 function convert_time2DateTime(nc; time_var="time")::Vector{DateTime}
 
-    eltype(nc[time_var]) <: DateTime && (return nc[time_var])
+    hr_time = nc[time_var]
+    eltype(hr_time[1]) <: DateTime && (return hr_time[:])
     yy = Int64(nc.attrib["year"])
     mm = Int64(nc.attrib["month"])
     dd = Int64(nc.attrib["day"])
@@ -285,7 +286,7 @@ function readCLNFile(nfile::String; modelreso=false)
         :DETECTST =>"detection_status",
     )
 
-    classfile = replace(nfile, "categorize" => "classific")
+    classfile = replace(nfile, "categorize" => "classification")
 
     if isfile(classfile)
     
@@ -413,12 +414,14 @@ function mymeshgrid(x::Vector, y::Vector)
 end
 # ----/
 
-end  # end of Module CloudnetTools
-
 # ****************************************************
 # Including further files:
 # * For plotting CloudNet products:
 Base.include(CloudnetTools, "CloudnetVisualization.jl")
 Base.include(CloudnetTools, "Cloudnet_for_ARM.jl")
+
+
+end  # end of Module CloudnetTools
+
 
 # --end of script

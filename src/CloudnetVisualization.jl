@@ -1,14 +1,13 @@
 # Part of CloudnetTools.jl
 # ******************************************************************
-# +++++++++++++++ MODULE CloudnetVis  ++++++++++++++++++++++++++++++
+# +++++++++++++++ MODULE Vis  for visulaization ++++++++++++++++++++
 # ******************************************************************
 
-module CloudnetVis
+module Vis
 
 using Plots
 using Dates
 using Printf
-using LaTeXStrings
 
 function show_LWP_IWP(iwc::Dict, liq::Dict)
     p1=plot(iwc[:time], iwc[:height], log10.(1f3iwc[:iwc]), st=:heatmap, color=:lapaz);
@@ -243,6 +242,6 @@ end
 # ----/
 
 
-end  # end of Module CloudnetViz
+end  # end of Module Vis
 #
 # end of file
