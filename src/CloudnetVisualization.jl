@@ -31,7 +31,7 @@ WHERE:
 Output:
 * plt::Plot output plot object.
 """
-function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=true)
+function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=true, savefig=:none)
 
     # defining time axis ticks:
     tm_tick = cnt[:time][1]:Minute(90):cnt[:time][end];
@@ -85,8 +85,17 @@ function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=true)
         pltout = plot(classplt, size=(800,600))
     end
 
+    savefig != :none && typeof(savefig) <: String && Plots.savefig(pltout, savefig)
+    
     return pltout
 end
+# -- OR
+function show_classific(cnt_file::String; SITENAME="", maxhgt=8, showlegend=true, savefig=:none)
+    cnt = CloudnetTools.readCLNFile(cnt_file)
+    return show_classific(cnt, SITENAME=SITENAME, maxhgt=maxhgt, showlegend=showlegend,savefig=savefig)
+end
+# ----/
+
 
 function CloudNetPalette(ColorType::String)
     if ColorType == "classific"
@@ -95,7 +104,7 @@ function CloudNetPalette(ColorType::String)
             (0.44,  1.0 ,  0.92);
             (0.17,  0.62,  0.95);
             (0.75,  0.6 ,  1.0);
-            (0.9 ,  0.9 ,  0.92);
+            (0.85,  0.85,  0.87); # 0.9, 0.9, 0.92
             (0.28,  0.27,  0.72);
             (0.99,  0.65,  0.0);
             (0.78,  0.98,  0.19);
