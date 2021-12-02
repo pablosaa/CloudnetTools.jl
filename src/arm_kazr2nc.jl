@@ -18,7 +18,11 @@ function kazr2nc(radar_file::String, output_path::String)
 
     LDR = haskey(radar, :LDR) ? radar[:LDR] : radar[:Zxpol] .- radar[:Ze] ;
 
-    radar_frequency = radar[:radar_frequency][1]
+    # considering the global attribute radar_frequency has the form: 35.6 GHz
+    # the value will be retrieved as a Vector with two elemens (35.6, "GHz")
+    radar_frequency = let x=radar[:radar_frequency][1]
+        typeof(x) <: Number ? x : NaN32
+    end
 
     nzrg = length(radar[:height]);  # Number of range gates
 
@@ -70,7 +74,7 @@ function kazr2nc(radar_file::String, output_path::String)
         "attenuation_corr_gas"      => 1, #true,
         "attenuation_corr_liq"      => 0, #false,
     ))
-    println("file just read!!!!")
+    
     ncv = defVar(ds,"v", Float32, ("range", "time"), attrib = OrderedDict(
         "units"                     => "m s-1",
         "long_name"                 => "Doppler velocity",
