@@ -133,11 +133,11 @@ function ShowLegendCloudNetClassification(LegendType::String)
         txt_labels = [
             #X, Y, "short_name", "long_name"
             (40, 1,"Clear sky", "Clear sky"),
-            (0, 1,"Liquid drops", "Cloud liquid droplets only"), 
+            (2, 1,"Liquid drops", "Cloud liquid droplets only"), 
             (20, 1,"Drizzle | Rain", "Drizzle or rain"), 
             (20, 2,"Drizzle & Cloud", "Drizzle or rain coexisting with cloud liquid droplets"),
-            (0, 3,"Ice", "Ice particles"), 
-            (0, 2, "SLC & Ice", "Ice coexisting with supercooled liquid droplets"),
+            (2, 3,"Ice", "Ice particles"), 
+            (2, 2, "SLC & Ice", "Ice coexisting with supercooled liquid droplets"),
             (20, 3,"Melting", "Melting ice particle"),
             (20, 4,"Melting & cloud", "Melting ice particles coexisting with cloud liquid droplets"), 
             (40, 2,"Aerosol", "Aerosol particles/no cloud or precipitation"), 
