@@ -27,12 +27,12 @@ WHERE:
 * SITENANE::String (optional) string with name of site,
 * maxhgt::Number (optional) indicating the maximum height in km, default=8,
 * showlegend::Bool (optional) show Cloudnet legend colors, default=true
-* addons::Bool to add meteo data to the plot, "wind" & "temp", default=true
+* showatm::Dict(:wind, :isoT) to add meteo data to the plot, "wind" & "iso-temp", default=true
 Output:
 * plt::Plot output plot object.
 """
 function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=true,
-                        showatm=(:wind=true, :isoT=true), savefig=:none)
+                        showatm=Dict(:wind=>true, :isoT=>true), savefig=:none)
 
     # defining time axis ticks:
     tm_tick = cnt[:time][1]:Minute(90):cnt[:time][end];
