@@ -31,7 +31,8 @@ WHERE:
 Output:
 * plt::Plot output plot object.
 """
-function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=true, savefig=:none)
+function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=true,
+                        showatm=(:wind=true, :isoT=true), savefig=:none)
 
     # defining time axis ticks:
     tm_tick = cnt[:time][1]:Minute(90):cnt[:time][end];
@@ -62,16 +63,20 @@ function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=true, savef
     Yin = 1f-3cnt[:model_height]
     #TLEV = [5, 0, -5, -10, -15, -20, -25, -30]
     BB = bbox(0,0,1,1)
-    
-    Attach_Isotherms(classplt, Xin, Yin[1:ihmax], cnt[:T][1:ihmax, Xin] .- 273.15,
-                     (1, BB), 2, TLEV = [5, 0, -5, -10, -15, -20, -25, -30])
-    
 
-    Attach_Windvector(classplt, Xin[1:2:end], Yin[2:4:ihmax],
-                      cnt[:UWIND][2:4:ihmax, Xin[1:2:end]],
-                      cnt[:VWIND][2:4:ihmax, Xin[1:2:end]],
-                      (1, BB), 3)
+    if showatm[:wind]
+        Tin = cnt[:T][1:ihmax, Xin] .- 273.15
+        Tlevels = extrema(Tin) |> x->collect.(ceil(x[1]):5:floor(x[2]))
+        Attach_Isotherms(classplt, Xin, Yin[1:ihmax], Tin,
+                         (1, BB), 2, TLEV = Tlevels)
+    end
 
+    if showatm[:isoT]
+        Attach_Windvector(classplt, Xin[1:2:end], Yin[2:4:ihmax],
+                          cnt[:UWIND][2:4:ihmax, Xin[1:2:end]],
+                          cnt[:VWIND][2:4:ihmax, Xin[1:2:end]],
+                          (1, BB), 3)
+    end
     #
     #θv = @. cnt[:T][1:ihmax,2:2:end]*(1024f0/cnt[:Pa][1:ihmax,2:2:end])^0.286;
     

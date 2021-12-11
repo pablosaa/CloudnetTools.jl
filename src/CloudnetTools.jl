@@ -54,7 +54,7 @@ end
 function convert_time2DateTime(nc; time_var="time")::Vector{DateTime}
 
     hr_time = nc[time_var]
-    eltype(hr_time[1]) <: DateTime && (return hr_time[:])
+    eltype(hr_time) <: DateTime && (return hr_time[:])
     yy = Int64(nc.attrib["year"])
     mm = Int64(nc.attrib["month"])
     dd = Int64(nc.attrib["day"])
@@ -185,7 +185,7 @@ end
 if optional parameter modelreso=true, then the model variables are
 interpolated from hourly resolution to Cloudnet resolution.
 """
-function readCLNFile(nfile::String; modelreso=false)
+function readCLNFile(nfile::String; modelreso=false, altfile=nothing)
     @assert isfile(nfile) error("$nfile cannot be found!")
     if contains(nfile, "categorize")
         println("reading Categorize file")
@@ -286,7 +286,9 @@ function readCLNFile(nfile::String; modelreso=false)
         :DETECTST =>"detection_status",
     )
 
-    classfile = replace(nfile, "categorize" => "classification")
+    classfile = ifelse(isnothing(altfile),
+                       replace(nfile, "categorize" => "classification"),
+                       altfile)
 
     if isfile(classfile)
     
@@ -296,7 +298,7 @@ function readCLNFile(nfile::String; modelreso=false)
         
         end
     else
-        @warn("$(classfile) cannot be found and not loaded!")
+        @warn("Classification $(classfile) cannot be found and not loaded!")
     end
     
     return var_output;
