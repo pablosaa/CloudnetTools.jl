@@ -64,14 +64,14 @@ function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=true,
     #TLEV = [5, 0, -5, -10, -15, -20, -25, -30]
     BB = bbox(0,0,1,1)
 
-    if showatm[:wind]
+    if showatm[:isoT]
         Tin = cnt[:T][1:ihmax, Xin] .- 273.15
-        Tlevels = extrema(Tin) |> x->collect.(ceil(x[1]):5:floor(x[2]))
+        Tlevels = extrema(Tin) |> x->collect(ceil(x[1]):5:floor(x[2]))
         Attach_Isotherms(classplt, Xin, Yin[1:ihmax], Tin,
                          (1, BB), 2, TLEV = Tlevels)
     end
 
-    if showatm[:isoT]
+    if showatm[:wind]
         Attach_Windvector(classplt, Xin[1:2:end], Yin[2:4:ihmax],
                           cnt[:UWIND][2:4:ihmax, Xin[1:2:end]],
                           cnt[:VWIND][2:4:ihmax, Xin[1:2:end]],
@@ -180,9 +180,10 @@ function Attach_Isotherms(pltin, Xin, Yin, Zvar, BB, sp; maxhgt=(0,8), TLEV=10)
     
     Plots.contour!(pltin, Xin, Yin, Zvar,
                    levels = TLEV, ylim=maxhgt, xlim = extrema(Xin), ticks=:none,
-                   linecolor=:black, alpha=:.5, lw=1, contour_labels = true,
+                   linecolor=:black, alpha=0.5, lw=1, contour_labels=true,
+                   labelsfontsize=12,
                    axis=false, colorbar=:none, subplot=sp, inset=BB, 
-                   background_color_subplot=:transparent);
+                   labelscolor=:black, background_color_subplot=:transparent);
 
     return pltin
 end
@@ -213,6 +214,121 @@ function Attach_Profile_Cascate(pltin, ts, hkm, Z, BB, sp; maxhgt=(0, 8), δts=1
                 inset=BB, background_color_subplot=:transparent, subplot=sp)
 
     return pltin
+end
+# ----/
+
+# ************************************************************
+# Functions to plot the data
+#
+function show_measurements(cln::Dict; atmosplot=true, SITENAME::String="", maxhgt=8, savefig=:none)
+    # converting to access the Cloudnet data:
+    radar = Dict(K => cln[K] for K in [:time, :height, :Ze])
+    lidar = Dict(K => cln[K] for K in [:time, :height, :β])
+    mwr = Dict(K => cln[K] for K in [:time, :LWP])
+
+    rs_time = haskey(cln, :model_time) ? :model_time : :time
+
+    rs_list = [rs_time, :model_height, :T, :UWIND, :VWIND]
+    rs = atmosplot ? Dict() : Dict(K => cln[K] for K in rs_list)
+    atmosplot && (rs[:model_height] *= 1f-3)  # converting to km
+
+        
+    return show_measurements(radar, lidar, mwr, atmos=rs, SITENAME=SITENAME, maxhgt=maxhgt, savefig=savefig)
+end
+# --- OR 
+function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmos::Dict=Dict(),
+                           SITENAME::String="", maxhgt=8, savefig=false)
+
+
+    Y_LIM = (0, maxhgt)
+    #X_LIM = extrema(radar[:time])
+    tm_tick = mwr[:time][1]:Minute(120):mwr[:time][end]
+    
+    # For the Radar:
+    BB = bbox(0,0,.89,1)
+    radarplt = Plots.plot(radar[:time], 1f-3radar[:height], radar[:Ze],
+                          st=:heatmap, color=palette(:lighttest,20), clim=(-30, 10),
+                          ylim=Y_LIM, tick_dir=:out, ytickfontsize=11,
+                          colorbar_title="Reflectivity [dBz]", #titlefontsize=11,
+                          ylabel="Altitude [km]", xticks=(tm_tick, ""),
+                          yguidefontsize=12);
+
+    # adding atmospheric information
+    if !isempty(atmos)
+        # Preparing to add graphs for isotherms and wind vectors:
+        Xin = haskey(atmos, :model_time) ? Vector(1:length(atmos[:model_time])) : unique(round.(Int64, range(1, stop=length(atmos[:time]), length=25)))
+
+        #Xin = round.(Int64, range(1, stop=length(atmos[:time]), length=48)) |> unique
+        #X_LIM = (0, maximum(Xin))
+    
+        Yin = collect(0.5:0.5:maxhgt)
+        K_height = haskey(atmos, :model_height) ? atmos[:model_height] : atmos[:height]
+        ihmax = [argmin(abs.(x .- K_height)) for x in Yin]
+
+        # converting to Celcius in case Temperature is in K
+        Tin = let T = atmos[:T][ihmax, Xin]
+            any(T .> 100) ? T .- 273.15 : T
+        end
+        
+        Tlevels = extrema(filter(!isnan,Tin)) |> x->collect(ceil(x[1]):5:floor(x[2]))
+        #Tlevels = [5, 0, -5, -10, -15, -20, -25, -30]
+        Attach_Isotherms(radarplt, Xin, Yin, Tin,
+                         (1, BB), 2, TLEV = Tlevels)
+
+        Attach_Windvector(radarplt, Xin[2:2:end], Yin,
+                          atmos[:UWIND][ihmax, Xin[2:2:end]],
+                          atmos[:VWIND][ihmax, Xin[2:2:end]],
+                          (1, BB), 3)
+    end
+    
+    # Plot for LIDAR
+    BB = bbox(0,0,.89,1)
+    lidarplt = Plots.plot(lidar[:time], 1f-3lidar[:height], log10.(lidar[:β]),
+                          st=:heatmap, color=:roma, clim=(-7, -4),
+                          ylim=Y_LIM, tick_dir=:out, ytickfontsize=11,
+                          colorbar_title="Lidar Backscattering log10 [sr⁻¹ m⁻¹]",
+                          ylabel="Altitude [km]", xticks=(tm_tick, ""), subplot=1);
+    
+    # adding atmospheric information
+    if !isempty(atmos)
+        Attach_Isotherms(lidarplt, Xin, Yin, Tin,
+                         (1, BB), 2, TLEV = Tlevels)
+    
+        Attach_Windvector(lidarplt, Xin[2:2:end], Yin,
+                          atmos[:UWIND][ihmax, Xin[2:2:end]],
+                          atmos[:VWIND][ihmax, Xin[2:2:end]],
+                          (1, BB), 3)
+    end
+    
+    # For Radiometer LWP
+    titletext = @sprintf("UTC time from %s %s", Dates.format(radar[:time][1], "dd-uuu-yyyy"), SITENAME);
+    mwrplt = Plots.plot(1,1, axis=nothing, border=:none, label=false);
+    
+    Plots.plot!(mwrplt, mwr[:time], mwr[:LWP],
+                ylim=(0, max(200, maximum(mwr[:LWP]))),
+                ylabel="LWP [g m⁻²]", l=2,
+                label=false,  tick_dir=:out,
+                yguidefont=font(:steelblue), ytickfontsize=11,
+                xticks = (tm_tick, Dates.format.(tm_tick, "H:MM")),
+                xlim = extrema(mwr[:time]), inset=(1, BB), subplot=2,
+                xtickfontsize=12, xguidefontsize=18, #font(15),
+                xlabel = titletext);
+    #ytickfontcolor=:steelblue,
+
+    # Compisite figure:
+
+    ll = @layout [a0{0.4h}; a{0.4h}; b{0.15h}];
+    finplt = Plots.plot(radarplt, lidarplt,  mwrplt, layout=ll,  link=:y,
+                        size=(1100,900), xguidefontsize=12, yguidefontsize=12,
+                        left_margin =10Plots.mm)
+                        #bottom_margin=20Plots.mm)
+    #                        title = titletext, titlefontsize=15,
+    #                        legend=[false false false], 
+
+    savefig != :none && typeof(savefig)<:String && Plots.savefig(finplt, savefig)
+    
+    return finplt
+
 end
 # ----/
 
@@ -255,6 +371,17 @@ function normalize_2Dvar(X::Matrix; δx=1.5)
 end
 # ----/
 
+# ****************
+function convert_wind_to_U_V(WSP::Matrix, WDIR::Matrix)
+
+    # converting from weather wind direction to math angle:
+    MANG = 270.0 .- WDIR
+    U = @. -abs(WSP)*sind(WDIR)  #cosd(MANG)
+    V = @. -abs(WSP)*cosd(WDIR)  #sind(MANG)
+        
+    return U, V
+end
+# ----/
 
 end  # end of Module Vis
 #

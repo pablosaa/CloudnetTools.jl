@@ -54,7 +54,7 @@ end
 function convert_time2DateTime(nc; time_var="time")::Vector{DateTime}
 
     hr_time = nc[time_var]
-    eltype(hr_time) <: DateTime && (return hr_time[:])
+    typeof(hr_time[1]) <: DateTime && (return hr_time[:])
     yy = Int64(nc.attrib["year"])
     mm = Int64(nc.attrib["month"])
     dd = Int64(nc.attrib["day"])
@@ -198,7 +198,7 @@ function readCLNFile(nfile::String; modelreso=false, altfile=nothing)
     # Categorize variables to read:
     vars_categorize = Dict(
         # RADAR
-        :Z => "Z",
+        :Ze => "Z",
         :V => "v",
         :σV => "v_sigma",
         :ωV => "width",
@@ -248,9 +248,21 @@ function readCLNFile(nfile::String; modelreso=false, altfile=nothing)
             end
 
             # Cleaning missing values from variables :
-            eltype(tmp) <: AbstractFloat && (tmp[tmp .≈ miss_val] .= NaN)
-
-            var_output[inkey] = tmp
+            
+            varout = fill(NaN, size(tmp))
+            if eltype(tmp) <: Union{Missing, AbstractFloat}
+                idxnan = .!ismissing.(tmp)
+                varout[idxnan] .= tmp[idxnan]
+                varout[varout .≈ miss_val] .= NaN
+                
+            elseif eltype(tmp) <: AbstractFloat
+                idxnan = tmp .≈ miss_val
+                varout[.!idxnan] .= tmp[.!idxnan]
+            else
+                varout = tmp
+            end
+            
+            var_output[inkey] = varout
         end
 
         # If modelreso = true, interpolate model data to cloudnet resolution:
