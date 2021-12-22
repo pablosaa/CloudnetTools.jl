@@ -9,11 +9,81 @@ using Plots
 using Dates
 using Printf
 
-function show_LWP_IWP(iwc::Dict, liq::Dict)
-    p1=plot(iwc[:time], iwc[:height], log10.(1f3iwc[:iwc]), st=:heatmap, color=:lapaz);
-    p2=plot(liq[:time], liq[:height], log10.(liq[:lwc]), st=:heatmap, color=:tokyo);
-    plot(p1,p2, layout=(2,1));
+function show_LWC_IWC(LWC::Dict, IWC::Dict; SITENAME="", mxhgt=10, twoplots=false, showisoT=true, savefig=:none, cnt::Dict)
+    
+    # defining parameters for LWC:
+    CLiqLIM = (-2, 1);
+    CLiqCOL = cgrad(:autumn1, 7, categorical=true);
+
+    # defining parameters for IWC:
+    CIceLIM = (-3, -1);
+    CIceCOL = cgrad(:Paired_3, 7, categorical=true);
+
+    # defining common parameters:
+    tm_tick = IWC[:time][1]:Minute(90):IWC[:time][end];
+    str_tick = Dates.format.(tm_tick, "H:MM");
+
+    Xstrname = "TIME UTC from $(SITENAME) "*Dates.format(IWC[:time][2], "dd.u.yyyy")
+
+    strtitle = "log₁₀ water content / g m⁻³";
+
+    XLIM = extrema(IWC[:time])
+
+    pice = plot(IWC[:time], 1f-3IWC[:height], log10.(1f3IWC[:iwc]), st=:heatmap, color=CIceCOL, clim=CIceLIM, ylim=(0, mxhgt), xlim=XLIM, xticks=(tm_tick, ""), yticks=:none, colorbar=twoplots);
+
+    # plot both together:
+    if twoplots
+        mxplt = plot(LWC[:time], 1f-3LWC[:height], log10.(1f3LWC[:lwc]), st=:heatmap, color=CLiqCOL, clim=CLiqLIM, ylim=(0, mxhgt), colorbar=twolots, xlim=XLIM, xlabel=Xstrname, xticks=(tm_tick, str_tick), xrot=45, xtickfontsize=11, xguidefont=font(12), title=strtitle);
+
+    else
+        mxplt = plot(pice, colorbar=:none);
+    
+        plot!(mxplt, LWC[:time], 1f-3LWC[:height], log10.(1f3LWC[:lwc]), st=:heatmap, color=CLiqCOL, inset=(1,bbox(0,0,1,1)), subplot=2, colorbar=:none, background_color_subplot=:transparent, ylim=(0, mxhgt), xlim=XLIM, xlabel=Xstrname, xticks=(tm_tick, str_tick), xrot=45, xtickfontsize=11, xguidefont=font(12), ylabel="Altitude / km", title=strtitle, tick_dir=:out, framestyle=:box, gridstyle=:dash);
+
+    end
+
+    # Preparing to add graphs for isotherms and wind vectors:
+    ihmax = findlast(1f-3cnt[:model_height] .≤ mxhgt)
+    
+    Xin = haskey(cnt, :model_time) ? Vector(1:length(cnt[:model_time])) : round.(Int64, range(1, stop=length(cnt[:time]), length=25))
+    
+    Yin = 1f-3cnt[:model_height]
+    #TLEV = [5, 0, -5, -10, -15, -20, -25, -30]
+    BB = bbox(0,0,1,1)
+
+    if showisoT
+        # converting to Celcius in case Temperature is in K
+        Tin = let T = cnt[:T][1:ihmax, Xin]
+            any(T .> 100) ? T .- 273.15 : T
+        end
+        
+        Tlevels = extrema(filter(!isnan,Tin)) |> x->ceil.(range(ceil(x[1]), stop=floor(x[2]), length=10))
+        Attach_Isotherms(mxplt, Xin, Yin[1:ihmax], Tin,
+                         (1, BB), 3, TLEV = Tlevels, maxhgt=(0, mxhgt))
+    end
+
+    
+    # creating colorbars for merged or gridded plots:
+    if twoplots
+        outplt = plot(mxplt, pice, layout=grid(2,1), ylabel="Altitude / km", tick_dir=:out, framestyle=:box, gridstyle=:dash);
+    else
+        # * liquid
+        liq_val = range(CLiqLIM[1], stop=CLiqLIM[2], length=7);
+        cmliq = heatmap([0], liq_val, liq_val', color=CLiqCOL, clim=CLiqLIM, colorbar=:none, tick_dir=:out, xticks=:none, xaxis=false, box=true, title="LWC");
+
+        # * ice
+        ice_val = range(CIceLIM[1], stop=CIceLIM[2], length=7);
+        cmice = heatmap([0], ice_val, ice_val', color=CIceCOL, clim=CIceLIM, colorbar=:none, tick_dir=:out, xticks=:none, xaxis=false, box=true, title="IWC", right_margin=2Plots.mm);
+
+        # creating output layout plot:
+        ll = @layout [a{0.96w} b{0.02w} c{0.02w}];
+        outplt = plot(mxplt, cmliq, cmice, layout=ll, size=(900,600), dpi=300, bottom_margin=15Plots.mm, left_margin=[15Plots.mm 0Plots.mm 0Plots.mm 0Plots.mm]);
+    end
+    
+    return outplt
 end
+# ----/
+
 
 # *********************************************************************
 # Function to plot the Classification data
@@ -65,8 +135,13 @@ function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=true,
     BB = bbox(0,0,1,1)
 
     if showatm[:isoT]
-        Tin = cnt[:T][1:ihmax, Xin] .- 273.15
-        Tlevels = extrema(Tin) |> x->collect(ceil(x[1]):5:floor(x[2]))
+        # converting to Celcius in case Temperature is in K
+        Tin = let T = cnt[:T][1:ihmax, Xin]
+            any(T .> 100) ? T .- 273.15 : T
+        end
+        
+        #Tlevels = extrema(Tin) |> x->collect(ceil(x[1]):5:floor(x[2]))
+        Tlevels = extrema(filter(!isnan,Tin)) |> x->ceil.(range(ceil(x[1]), stop=floor(x[2]), length=7))
         Attach_Isotherms(classplt, Xin, Yin[1:ihmax], Tin,
                          (1, BB), 2, TLEV = Tlevels)
     end
@@ -229,8 +304,8 @@ function show_measurements(cln::Dict; atmosplot=true, SITENAME::String="", maxhg
     rs_time = haskey(cln, :model_time) ? :model_time : :time
 
     rs_list = [rs_time, :model_height, :T, :UWIND, :VWIND]
-    rs = atmosplot ? Dict() : Dict(K => cln[K] for K in rs_list)
-    atmosplot && (rs[:model_height] *= 1f-3)  # converting to km
+    rs = atmosplot ? Dict(K => cln[K] for K in rs_list) : Dict()
+    #atmosplot && (rs[:model_height] *= 1f-3)  # converting to km
 
         
     return show_measurements(radar, lidar, mwr, atmos=rs, SITENAME=SITENAME, maxhgt=maxhgt, savefig=savefig)
@@ -261,16 +336,16 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmos::Dict=Dict
         #Xin = round.(Int64, range(1, stop=length(atmos[:time]), length=48)) |> unique
         #X_LIM = (0, maximum(Xin))
     
-        Yin = collect(0.5:0.5:maxhgt)
+        Yin = collect(0:0.5:maxhgt)
         K_height = haskey(atmos, :model_height) ? atmos[:model_height] : atmos[:height]
-        ihmax = [argmin(abs.(x .- K_height)) for x in Yin]
+        ihmax = [argmin(abs.(x .- 1f-3K_height)) for x in Yin]
 
         # converting to Celcius in case Temperature is in K
         Tin = let T = atmos[:T][ihmax, Xin]
             any(T .> 100) ? T .- 273.15 : T
         end
         
-        Tlevels = extrema(filter(!isnan,Tin)) |> x->collect(ceil(x[1]):5:floor(x[2]))
+        Tlevels = extrema(filter(!isnan,Tin)) |> x->ceil.(range(ceil(x[1]), stop=floor(x[2]), length=7))
         #Tlevels = [5, 0, -5, -10, -15, -20, -25, -30]
         Attach_Isotherms(radarplt, Xin, Yin, Tin,
                          (1, BB), 2, TLEV = Tlevels)
