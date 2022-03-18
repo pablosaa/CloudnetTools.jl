@@ -142,15 +142,15 @@ function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=true,
         
         #Tlevels = extrema(Tin) |> x->collect(ceil(x[1]):5:floor(x[2]))
         Tlevels = extrema(filter(!isnan,Tin)) |> x->ceil.(range(ceil(x[1]), stop=floor(x[2]), length=7))
-        Attach_Isotherms(classplt, Xin, Yin[1:ihmax], Tin,
-                         (1, BB), 2, TLEV = Tlevels)
+        classplt = Attach_Isotherms(classplt, Xin, Yin[1:ihmax], Tin,
+                                    (1, BB), 2, TLEV = Tlevels)
     end
 
     if showatm[:wind]
-        Attach_Windvector(classplt, Xin[1:2:end], Yin[2:4:ihmax],
-                          cnt[:UWIND][2:4:ihmax, Xin[1:2:end]],
-                          cnt[:VWIND][2:4:ihmax, Xin[1:2:end]],
-                          (1, BB), 3)
+        classplt = Attach_Windvector(classplt, Xin[1:2:end], Yin[2:4:ihmax],
+                                     cnt[:UWIND][2:4:ihmax, Xin[1:2:end]],
+                                     cnt[:VWIND][2:4:ihmax, Xin[1:2:end]],
+                                     (1, BB), 3)
     end
     #
     #θv = @. cnt[:T][1:ihmax,2:2:end]*(1024f0/cnt[:Pa][1:ihmax,2:2:end])^0.286;
@@ -253,12 +253,12 @@ end
 function Attach_Isotherms(pltin, Xin, Yin, Zvar, BB, sp; maxhgt=(0,8), TLEV=10)
     #TLEV = [5, 0, -5, -10, -15, -20, -25, -30]
     
-    Plots.contour!(pltin, Xin, Yin, Zvar,
-                   levels = TLEV, ylim=maxhgt, xlim = extrema(Xin), ticks=:none,
-                   linecolor=:black, alpha=0.5, lw=1, contour_labels=true,
-                   labelsfontsize=12,
-                   axis=false, colorbar=:none, subplot=sp, inset=BB, 
-                   labelscolor=:black, background_color_subplot=:transparent);
+    pltin = Plots.contour!(pltin, Xin, Yin, Zvar,
+                           levels = TLEV, ylim=maxhgt, xlim = extrema(Xin), ticks=:none,
+                           linecolor=:black, alpha=0.5, lw=1, contour_labels=true,
+                           labelsfontsize=12,
+                           axis=false, colorbar=:none, subplot=sp, inset=BB, 
+                           labelscolor=:black, background_color_subplot=:transparent);
 
     return pltin
 end
@@ -270,10 +270,10 @@ function Attach_Windvector(pltin, Xin, Yin, Uin, Vin, BB, sp; maxhgt=(0,8))
 
     TT, HH, UU, VV = prepare_quiver(Xin, Yin, Uin, Vin)
     
-    Plots.quiver!(pltin, TT[:], HH[:], quiver=(UU[:],VV[:]),
-                  ylim=maxhgt, axis=false, color=:gray, alpha=0.3,
-                  ticks=:none, shape=:none, inset=BB, subplot=sp,
-                  background_color_subplot=:transparent);
+    pltin = Plots.quiver!(pltin, TT[:], HH[:], quiver=(UU[:],VV[:]),
+                          ylim=maxhgt, axis=false, color=:gray, alpha=0.3,
+                          ticks=:none, shape=:none, inset=BB, subplot=sp,
+                          background_color_subplot=:transparent);
 
     return pltin
 end
@@ -437,7 +437,7 @@ function normalize_2Dvar(X::Matrix; δx=1.5)
     δx < 1 && error("Optional input δx needs to be ≥ 1")
     T01 = [];
     for T ∈ eachcol(X)
-        let lims = extrema(T)
+        let lims = filter(!isnan, T) |> extrema
             (2(T .- lims[1])./(lims[2] - lims[1]) .- 1)δx |> x->push!(T01, x)
             #push!(T01, (T .- lims[1])./(lims[2] - lims[1]) |> v-> (2δx.*v) .- δx)
         end

@@ -334,26 +334,32 @@ but at the same resolution as cloudnet.
 
 """
 function ConvertModelResolution(cln_in::Dict{Symbol, Any},
-                                model_time::Vector{Any},
-                                model_height::Vector{Real};
+                                model_time::Vector{<:Any},
+                                model_height::Vector{<:Real};
                                 cln_time=nothing,
                                 cln_height=nothing)
 
 
     # creating modes for interpolation depending on typeof model_time:
-    if eltype(model_time) <: DateTime
-        model_ts = let ts = model_time
-            @. hours(ts) + minute(ts)/60 + seconds(ts)/3600
+    function day_fraction(time_in::Vector{DateTime})
+        time_out = let ts = time_in
+            tmp = @. hour(ts) + minute(ts)/60 + second(ts)/3600
+            tmp /= 24
+            tmp .+= day.(ts)
         end
-        nodel = (model_height, model_ts)
+        return time_out
+    end
+
+    if eltype(model_time) <: DateTime
+        model_ts = day_fraction(model_time)
+        
+        nodes = (model_height, model_ts)
     else
         nodes = (model_height, model_time)
     end
         
     if isnothing(cln_time)
-        let ts = cln_in[:time]
-            cln_time = @. hour(ts) + minute(ts)/60 + seconds(ts)/3600
-        end
+        cln_time = day_fraction(cln_in[:time])
     end
     
     if isnothing(cln_height)
