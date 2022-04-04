@@ -1,4 +1,4 @@
-function hsrl2nc(lidar_file::String, output_path::String)
+function hsrl2nc(lidar_file::String, output_path::String; SITE="arm-nsa")
 
     # script to read the ARM NSA HSRL data to convert to CloudNet lidar input
     # Part of (AC)3 B07 project.
@@ -9,15 +9,11 @@ function hsrl2nc(lidar_file::String, output_path::String)
         error("$lidar_file does not exist!")
     end
     
-    SITE = "arm-nsa"
-    
+    # reading data:
     lidar = ARMtools.getLidarData(lidar_file)
 
     
     time = lidar[:time];
-    #arm_year = year(time[1])
-    #arm_month = month(time[1])
-    #arm_day = day(time[1])
     range = lidar[:height]
     beta = lidar[:β_raw]  # 1/(m sr) plot scale logarithmic
 
@@ -118,52 +114,13 @@ function hsrl2nc(lidar_file::String, output_path::String)
         return β_out
     end
 
-    function calc_β(beta, range; std_beta=nothing, noise_params=nothing, depol_c=nothing)
-    
-        range_square = (range*1e-3).^2;  # [km²]
-        range_square[1] = range[1] ≈ 0 ? range_square[2] : range_square[1]
-        beta_new = Array(beta./range_square);
-        δ = copy(beta_new)
-        if !isnothing(std_beta)
-            SNR = beta./std_beta
-            beta_new[SNR .< 5] .= NaN
-            # convert circular- to linear-depolarization
-            if !isnothing(depol_c)
-                δ = depol_c./(2.0 .+ depol_c)
-                δ[SNR .< 5] .= NaN
-            end
-        else
-            mystd(x) = std(x[.!isnan.(x)]);
-            myvar(x) = var(x[.!isnan.(x)]);
-            mymean(x) = mean(x[.!isnan.(x)]);
-
-            signal_var = mapslices(myvar, beta[end-noise_params[1]:end, :], dims=1);
-            is_saturation = findall(signal_var[:] .> noise_params[2]);
-
-    
-            # calculating noise_floor for backscattering signal:
-            noise_std = mapslices(mystd, beta_new[end-noise_params[1]:end, :], dims=1);
-            noise_ave = mapslices(mymean, beta_new[end-noise_params[1]:end, :], dims=1);
-
-            #noisefloor = 2*noise_ave + 9*noise_std;
-            noisefloor = noise_ave + noise_std;
-            beta_new[beta_new .< noisefloor] .= NaN;
-            beta_new = reset_low_values_above_saturation(beta_new, is_saturation, noise_params[4][1]);
-        end
-        β = copy(beta_new);
-        β .*= range_square;
-
-
-        return isnothing(depol_c) ? β : β, δ
-    end
-
     if @isdefined std_beta
-        β_att, δ = calc_β(beta, range, std_beta = std_beta, depol_c=depol_c)
+        β_att, δ = ARMtools.calc_lidar_β(beta, range, std_beta = std_beta, depol_c=depol_c)
     else
         # the following parameters are empirically for HSRL
         lidar_noise_params = (100, 1e-13, 1e-9, (1.1e-9, 2.9e-8));
 
-        β_att = calc_β(beta, range, noise_params = noise_params);
+        β_att = ARMtools.calc_lidar_β(beta, range, noise_params = noise_params);
     end
 
     ###return file_time, range, β, δ
@@ -237,6 +194,13 @@ function hsrl2nc(lidar_file::String, output_path::String)
         "missing_value"             => NCDatasets.fillvalue(eltype(β)),
     ))
 
+    ncdepol = defVar(ds,"depol", Float32, ("range", "time"), attrib = OrderedDict(
+        "units"                     => "-",
+        "long_name"                 => "lidar linear depolarization ratio",
+        "comment"                   => "Only present for HSRL. No smoothing.",
+        "missing_value"             => NCDatasets.fillvalue(eltype(δ)),
+    ))
+    
     ncrange = defVar(ds,"range", Float32, ("range",), attrib = OrderedDict(
         "units"                     => "m",
         "long_name"                 => "Range from instrument",
@@ -268,6 +232,7 @@ function hsrl2nc(lidar_file::String, output_path::String)
     ncbeta_raw[:] = β_raw;
     ncbeta[:] = β;
     ncbeta_smooth[:] = β_smooth;
+    ncdepol[:] = δ;
     ncrange[:] = range;
     nctime[:] = file_time;
     nctilt_angle[:] = 0;
@@ -282,4 +247,43 @@ end
 # end of Function
 
 
+##   function calc_β(beta, range; std_beta=nothing, noise_params=nothing, depol_c=nothing)
+##    
+##        range_square = (range*1e-3).^2;  # [km²]
+##        range_square[1] = range[1] ≈ 0 ? range_square[2] : range_square[1]
+##        beta_new = Array(beta./range_square);
+##        δ = copy(beta_new)
+##        if !isnothing(std_beta)
+##            SNR = beta./std_beta
+##            beta_new[SNR .< 5] .= NaN
+##            # convert circular- to linear-depolarization
+##            if !isnothing(depol_c)
+##                δ = ARMtools.circular_to_linear_depol(depol_c)
+##                δ[SNR .< 5] .= NaN
+##            end
+##        else
+##            mystd(x) = std(x[.!isnan.(x)]);
+##            myvar(x) = var(x[.!isnan.(x)]);
+##            mymean(x) = mean(x[.!isnan.(x)]);
+##
+##            signal_var = mapslices(myvar, beta[end-noise_params[1]:end, :], dims=1);
+##            is_saturation = findall(signal_var[:] .> noise_params[2]);
+##
+##    
+##            # calculating noise_floor for backscattering signal:
+##            noise_std = mapslices(mystd, beta_new[end-noise_params[1]:end, :], dims=1);
+##            noise_ave = mapslices(mymean, beta_new[end-noise_params[1]:end, :], dims=1);
+##
+##            #noisefloor = 2*noise_ave + 9*noise_std;
+##            noisefloor = noise_ave + noise_std;
+##            beta_new[beta_new .< noisefloor] .= NaN;
+##            beta_new = reset_low_values_above_saturation(beta_new, is_saturation, noise_params[4][1]);
+##        end
+##        β = copy(beta_new);
+##        β .*= range_square;
+##
+##
+##        return isnothing(depol_c) ? β : β, δ
+##    end
+##
 
