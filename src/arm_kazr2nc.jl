@@ -1,9 +1,8 @@
-function kazr2nc(radar_file::String, output_path::String)
+function kazr2nc(radar_file::String, output_path::String; SITE="not-defined")
 
     # Script to adapt ARM KAZR radar to netCDF input for cloudnetpy
     # 
     # Reading input ARM netCDF file:
-    SITE = "arm-nsa"
     
     if !isfile(radar_file)
         error("$radar_file does not exist!")
@@ -47,10 +46,9 @@ function kazr2nc(radar_file::String, output_path::String)
 
     ds = NCDataset(outputfile, "c", attrib = OrderedDict(
         "Conventions"               => "CF-1.7",
-        "cloudnetpy_version"        => "1.3.2",
         "file_uuid"                 => file_uuid,
         "cloudnet_file_type"        => "radar",
-        "title"                     => "ARSCL Radar data made by Julia",
+        "title"                     => "ARSCL Radar data made by Julia Lang",
         "year"                      => Int16(arm_year),
         "month"                     => Int16(arm_month),
         "day"                       => Int16(arm_day),
@@ -67,7 +65,7 @@ function kazr2nc(radar_file::String, output_path::String)
 
     # Declare variables
 
-    ncZe = defVar(ds,"Ze", Float32, ("range", "time"), attrib = OrderedDict(
+    ncZe = defVar(ds,"Zh", Float32, ("range", "time"), attrib = OrderedDict(
         "units"                     => "dBZ",
         "long_name"                 => "Radar reflectivity factor (uncorrected), vertical polarization",
         "missing_value"             => NCDatasets.fillvalue(eltype(radar[:Ze])),

@@ -1,11 +1,9 @@
-function lidar2nc(lidar_file::String, output_path::String)
+function lidar2nc(lidar_file::String, output_path::String; SITE="not-defined", altitude_m=0f0, tilt_angle=0f0, λ_nm=910)
 
     if !isfile(lidar_file)
         error("$lidar_file does not exist!")
     end
 
-    SITE = "arm-nsa"
-    
     # Reading input ARM netCDF file:
     lidar = ARMtools.getLidarData(lidar_file)
     
@@ -15,9 +13,10 @@ function lidar2nc(lidar_file::String, output_path::String)
     arm_day = day(time[1])
     range = lidar[:height];
     beta = lidar[:β_raw]; # converted from 1/(sr km 10000) to 1/(sr m)
-    λ_nm = 910;  # Obtained from the ARM ceilometer handbook [nm]
-    tilt_angle = maximum(lidar[:TILT]);
-    height = lidar[:ALT];
+    # Default wavelength=910nm obtained from the ARM ceilometer handbook [nm]
+    λ_nm = haskey(lidar, :λ_nm) ? lidar[:λ_nm] : λ_nm
+    tilt_angle = max(tilt_angle, maximum(lidar[:TILT]));
+    altitude_m = max(lidar[:ALT], altitude_m);
     lidar_location = join(lidar[:location]);
     lidar_source = join(lidar[:instrumentmodel]);
     lidar_doi = join(lidar[:doi]);
@@ -63,16 +62,15 @@ function lidar2nc(lidar_file::String, output_path::String)
     
     ds = NCDataset(outputfile, "c", attrib = OrderedDict(
         "Conventions"               => "CF-1.7",
-        "cloudnetpy_version"        => "1.3.2",
         "file_uuid"                 => file_uuid,
         "cloudnet_file_type"        => "lidar",
-        "title"                     => lidar_location, #"Ceilometer file from Mace-Head",
+        "title"                     => lidar_location,
         "year"                      => Int16(arm_year),
         "month"                     => Int16(arm_month),
         "day"                       => Int16(arm_day),
-        "location"                  => lidar_location, #"Mace-Head",
-        "history"                   => file_history, #"2020-09-29 14:50:54 - ceilometer file created",
-        "source"                    => lidar_source, #"Jenoptik CHM15k",
+        "location"                  => lidar_location,
+        "history"                   => file_history,
+        "source"                    => lidar_source,
         "references"                => lidar_doi,
     ))
 
@@ -131,6 +129,11 @@ function lidar2nc(lidar_file::String, output_path::String)
         "long_name"                 => "laser wavelength",
     ))
 
+    ncaltitude = defVar(ds,"altitude", Float32, (), attrib = OrderedDict(
+        "units"                     => "m",
+        "long_name"                 => "Altitude of site",
+    ))
+
 
     # Define variables
 
@@ -140,9 +143,9 @@ function lidar2nc(lidar_file::String, output_path::String)
     ncrange[:] = range; #...
     nctime[:] = file_time; #...
     nctilt_angle[:] = tilt_angle; #...
-    ncheight[:] = height[1] .+ range; #...
+    ncheight[:] = altitude_m .+ range; #...
     ncwavelength[:] = λ_nm; #...
-
+    ncaltitude[:] = altitude_m;
     close(ds)
 
     return nothing

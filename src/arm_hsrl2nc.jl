@@ -1,4 +1,4 @@
-function hsrl2nc(lidar_file::String, output_path::String; SITE="arm-nsa")
+function hsrl2nc(lidar_file::String, output_path::String; SITE="not-defined", altitude_m=0f0, tilt_angle=0f0, λ_nm=510)
 
     # script to read the ARM NSA HSRL data to convert to CloudNet lidar input
     # Part of (AC)3 B07 project.
@@ -27,7 +27,11 @@ function hsrl2nc(lidar_file::String, output_path::String; SITE="arm-nsa")
     lidar_source = join(lidar[:location])
     lidar_location = join(lidar[:instrumentmodel])
     lidar_doi = haskey(lidar, :doi) ? join(lidar[:doi]) : "none" ;
-    λ_nm = 510;  # [nm]  this is from documentation, ncfile doesn't have it
+    # Default wavelength=510 [nm] this is from documentation, ncfile doesn't have it
+    λ_nm = haskey(lidar, :λ_nm) ? lidar[:λ_nm] : λ_nm ;
+    tilt_angle = max(tilt_angle, maximum(lidar[:TILT]));
+    altitude_m = max(lidar[:ALT], altitude_m);
+
     ## end of reading parameters
 
 
@@ -152,10 +156,9 @@ function hsrl2nc(lidar_file::String, output_path::String; SITE="arm-nsa")
     outputfile = joinpath(output_path, ARM_OUTFILE);
     ds = NCDataset(outputfile, "c", attrib = OrderedDict(
         "Conventions"               => "CF-1.7",
-        "cloudnetpy_version"        => "1.3.2",
         "file_uuid"                 => file_uuid,
         "cloudnet_file_type"        => "lidar",
-        "title"                     => "HSRL made by Julia",
+        "title"                     => "HSRL made by Julia Lang",
         "year"                      => Int16(arm_year),
         "month"                     => Int16(arm_month),
         "day"                       => Int16(arm_day),
@@ -228,6 +231,12 @@ function hsrl2nc(lidar_file::String, output_path::String; SITE="arm-nsa")
         "long_name"                 => "laser wavelength",
     ))
 
+    ncaltitude = defVar(ds,"altitude", Float32, (), attrib = OrderedDict(
+        "units"                     => "m",
+        "long_name"                 => "Altitude of site",
+    ))
+
+
     # Define variables
     ncbeta_raw[:] = β_raw;
     ncbeta[:] = β;
@@ -235,10 +244,10 @@ function hsrl2nc(lidar_file::String, output_path::String; SITE="arm-nsa")
     ncdepol[:] = δ;
     ncrange[:] = range;
     nctime[:] = file_time;
-    nctilt_angle[:] = 0;
-    ncheight[:] = 15 .+ range; #... PSG to be fixed
+    nctilt_angle[:] = tilt_angle;
+    ncheight[:] = altitude_m .+ range; #... PSG to be fixed
     ncwavelength[:] = λ_nm;
-
+    ncaltitude[:] = altitude_m
     close(ds)
 
     return nothing
@@ -246,44 +255,4 @@ end
 #----/
 # end of Function
 
-
-##   function calc_β(beta, range; std_beta=nothing, noise_params=nothing, depol_c=nothing)
-##    
-##        range_square = (range*1e-3).^2;  # [km²]
-##        range_square[1] = range[1] ≈ 0 ? range_square[2] : range_square[1]
-##        beta_new = Array(beta./range_square);
-##        δ = copy(beta_new)
-##        if !isnothing(std_beta)
-##            SNR = beta./std_beta
-##            beta_new[SNR .< 5] .= NaN
-##            # convert circular- to linear-depolarization
-##            if !isnothing(depol_c)
-##                δ = ARMtools.circular_to_linear_depol(depol_c)
-##                δ[SNR .< 5] .= NaN
-##            end
-##        else
-##            mystd(x) = std(x[.!isnan.(x)]);
-##            myvar(x) = var(x[.!isnan.(x)]);
-##            mymean(x) = mean(x[.!isnan.(x)]);
-##
-##            signal_var = mapslices(myvar, beta[end-noise_params[1]:end, :], dims=1);
-##            is_saturation = findall(signal_var[:] .> noise_params[2]);
-##
-##    
-##            # calculating noise_floor for backscattering signal:
-##            noise_std = mapslices(mystd, beta_new[end-noise_params[1]:end, :], dims=1);
-##            noise_ave = mapslices(mymean, beta_new[end-noise_params[1]:end, :], dims=1);
-##
-##            #noisefloor = 2*noise_ave + 9*noise_std;
-##            noisefloor = noise_ave + noise_std;
-##            beta_new[beta_new .< noisefloor] .= NaN;
-##            beta_new = reset_low_values_above_saturation(beta_new, is_saturation, noise_params[4][1]);
-##        end
-##        β = copy(beta_new);
-##        β .*= range_square;
-##
-##
-##        return isnothing(depol_c) ? β : β, δ
-##    end
-##
 

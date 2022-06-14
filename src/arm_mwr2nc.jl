@@ -1,8 +1,7 @@
-function mwr2nc(mwr_file::String, output_path::String)
+function mwr2nc(mwr_file::String, output_path::String; SITE="not-defined")
 
     mwr = ARMtools.getMWRData(mwr_file)
 
-    SITE = "arm-nsa"
     # Aux variables:
     file_time = @. Second(mwr[:time] - DateTime(2001,1,1,0,0,0));
 
@@ -14,13 +13,13 @@ function mwr2nc(mwr_file::String, output_path::String)
     outputfile = joinpath(output_path, ARM_OUTFILE);
     ds = NCDataset(outputfile, "c", attrib = OrderedDict(
         "netCDF_convention"         => " CF-1.0",
-        "radiometer_location"       => "Utqiagvik",
+        "radiometer_location"       => SITE,
         "radiometer_system"         => "Radiometrics",
-        "serial_number"             => " R-xx/xxx",
+        "serial_number"             => "not defined",
         "station_altitude"          => "$(mwr[:alt])", #" 21",
         "station_longitude"         => "$(mwr[:lon])", #"9.9�' West",
         "station_latitude"          => "$(mwr[:lat])", #"53.33�' North",
-        "comments"                  => "Made it by Julia",
+        "comments"                  => "Made it by Julia Lang",
         "radiometer_software_version" => "none",
         "host_PC_software_version"  => "none",
     ))
@@ -71,11 +70,11 @@ function mwr2nc(mwr_file::String, output_path::String)
         "Info"                      => "0 = Linear Regr., 1 = Quadr. Regr., 2 = Neural Network",
     ))
 
-    ncLWP_data = defVar(ds,"LWP_data", Float32, ("time",), attrib = OrderedDict(
+    ncLWP_data = defVar(ds,"lwp", Float32, ("time",), attrib = OrderedDict(
         "units"                     => "g / m^2",
     ))
 
-    ncIWV_data = defVar(ds,"IWV_data", Float32, ("time",), attrib = OrderedDict(
+    ncIWV_data = defVar(ds,"iwv", Float32, ("time",), attrib = OrderedDict(
         "units"                     => "kg / m^2",
     ))
     
