@@ -16,6 +16,7 @@ using ImageFiltering
 using UUIDs
 
 # Including transformation functions: from ARM files to Cloudnet input files.
+Base.include(ARM, "aux_functions.jl")
 Base.include(ARM, "arm_mwr2nc.jl")
 Base.include(ARM, "arm_lidar2nc.jl")
 Base.include(ARM, "arm_kazr2nc.jl")
@@ -62,7 +63,7 @@ USAGE:
     
     (c) Pablo Saavedra G.
 """
-function ARMconverter(the_key::Symbol, arm_filenc::String, out_path::String)
+function ARMconverter(the_key::Symbol, arm_filenc::String, out_path::String; extra_params=Dict())
     # Here the values of dictionary keys needs to be replaces by ARM data converter function:
     list_of_func = Dict(
         :radar => ARM.kazr2nc,
@@ -73,8 +74,8 @@ function ARMconverter(the_key::Symbol, arm_filenc::String, out_path::String)
     );
 
     !isdir(out_path) && mkpath(out_path);
- 
-    ex = :($(list_of_func[the_key])($arm_filenc, $out_path))
+
+    ex = :($(list_of_func[the_key])($arm_filenc, $out_path, extra_params=$extra_params))
 
     return eval(ex)
 end
@@ -102,7 +103,7 @@ function ARMconverter(yy, mm, dd, thekey::Symbol, input_params::Dict; owndir=tru
     # if output path does not exist, then create it
     !isdir(OUT_PATH) && mkpath(OUT_PATH)
     
-    return ARMconverter(thekey, arm_filenc, OUT_PATH)
+    return ARMconverter(thekey, arm_filenc, OUT_PATH; extra_params=input_params)
 end
 # ----/
 

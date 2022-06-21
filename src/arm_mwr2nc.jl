@@ -1,27 +1,54 @@
-function mwr2nc(mwr_file::String, output_path::String; SITE="not-defined")
+function mwr2nc(mwr_file::String, output_path::String; extra_params=Dict{Symbol, Any}())
 
     mwr = ARMtools.getMWRData(mwr_file)
 
     # Aux variables:
-    file_time = @. Second(mwr[:time] - DateTime(2001,1,1,0,0,0));
-
+    #file_time = @. Second(mwr[:time] - DateTime(2001,1,1,0,0,0));
+    file_time = datetime24hours(mwr[:time])
+    
     # Creating output file for CloudNetpy
     arm_year = year(mwr[:time][1])
     arm_month = month(mwr[:time][1])
     arm_day = day(mwr[:time][1])
+
+    SITE = get_SITE(mwr, extra_params, inkeys=(:site, :campaign))
+
+    # finding DOI from data file or as extra parameter?
+    doi = get_parameter(mwr, :doi, extra_params, default="none") ;
+
+    # title from the input data file?
+    arm_title = get_parameter(mwr, :title, extra_params, default="")
+
+    # generating UUID for the file:
+    file_uuid = string(uuid1());
+
+    # generating file history:
+    file_history = get_parameter(mwr, :history, extra_params,
+                                 default="Created by Julia Lang (CloudnetTools.jl)"*string(", ", today() ));
+                  
+
     ARM_OUTFILE = @sprintf("%04d%02d%02d_%s_mwr.nc", arm_year, arm_month, arm_day, SITE);
+
     outputfile = joinpath(output_path, ARM_OUTFILE);
     ds = NCDataset(outputfile, "c", attrib = OrderedDict(
-        "netCDF_convention"         => " CF-1.0",
-        "radiometer_location"       => SITE,
+        "Conventions"               => "CF-1.7",
+        "file_uuid"                 => file_uuid,
+        "cloudnet_file_type"        => "mwr",
+        "title"                     => arm_title,
+        "location"                  => SITE,
         "radiometer_system"         => "Radiometrics",
         "serial_number"             => "not defined",
-        "station_altitude"          => "$(mwr[:alt])", #" 21",
-        "station_longitude"         => "$(mwr[:lon])", #"9.9�' West",
-        "station_latitude"          => "$(mwr[:lat])", #"53.33�' North",
-        "comments"                  => "Made it by Julia Lang",
+        "year"                      => arm_year,
+        "month"                     => arm_month,
+        "day"                       => arm_day,
+        #"station_altitude"          => "$(mwr[:alt])", #" 21",
+        #"station_longitude"         => "$(mwr[:lon])", #"9.9�' West",
+        #"station_latitude"          => "$(mwr[:lat])", #"53.33�' North",
+        "source"                    => "arm.gov",
+        "history"                   => file_history,
         "radiometer_software_version" => "none",
         "host_PC_software_version"  => "none",
+        "references"                => doi,
     ))
 
     # Dimensions
@@ -30,13 +57,13 @@ function mwr2nc(mwr_file::String, output_path::String; SITE="not-defined")
 
     # Declare variables
 
-    nctime_reference = defVar(ds,"time_reference", Int32, (), attrib = OrderedDict(
+    nctime_reference = defVar(ds,"time_reference", Float32, (), attrib = OrderedDict(
         "long_name"                 => "flag indicating the time zone reference",
         "units"                     => "unitless",
         "comment"                   => "0 = local time, 1 = UTC",
     ))
 
-    ncnumber_integrated_samples = defVar(ds,"number_integrated_samples", Int32, ())
+    ncnumber_integrated_samples = defVar(ds,"number_integrated_samples", Float32, ())
 
     ncminimum = defVar(ds,"minimum", Float32, (), attrib = OrderedDict(
         "units"                     => "g / m^2",
@@ -46,13 +73,14 @@ function mwr2nc(mwr_file::String, output_path::String; SITE="not-defined")
         "units"                     => "g / m^2",
     ))
 
-    nctime = defVar(ds,"time", Int32, ("time",), attrib = OrderedDict(
-        "long_name"                 => "sample time",
+    nctime = defVar(ds,"time", Float32, ("time",), attrib = OrderedDict(
+        "long_name"                 => "Time UTC",
+        "standard_name"             => "time",
         "units"                     => "seconds since 1.1.2001, 00:00:00",
         "comment"                   => "reference time zone indicated in field time_reference",
     ))
 
-    ncrain_flag = defVar(ds,"rain_flag", Int32, ("time",), attrib = OrderedDict(
+    ncrain_flag = defVar(ds,"rain_flag", Float32, ("time",), attrib = OrderedDict(
         "Info"                      => "0 = No Rain, 1 = Raining",
     ))
 
@@ -64,37 +92,63 @@ function mwr2nc(mwr_file::String, output_path::String; SITE="not-defined")
 
     ncazimuth_angle = defVar(ds,"azimuth_angle", Float32, ("time",), attrib = OrderedDict(
         "units"                     => "DEG (0�-360�)",
+        "long_name"                 => "Azimuth angle",
+        "standard_name"             => "solar_azimuth_angle",
     ))
 
-    ncretrieval = defVar(ds,"retrieval", Int32, (), attrib = OrderedDict(
+    ncretrieval = defVar(ds,"retrieval", Float32, (), attrib = OrderedDict(
         "Info"                      => "0 = Linear Regr., 1 = Quadr. Regr., 2 = Neural Network",
     ))
 
     ncLWP_data = defVar(ds,"lwp", Float32, ("time",), attrib = OrderedDict(
-        "units"                     => "g / m^2",
+        "units"                     => "g m-2",
+        "long_name"                 => "Liquid water path",
+        "standard_name"             => "atmosphere_cloud_liquid_water_content",
     ))
 
     ncIWV_data = defVar(ds,"iwv", Float32, ("time",), attrib = OrderedDict(
-        "units"                     => "kg / m^2",
+        "units"                     => "kg m-2",
     ))
+
+    ncaltitude = defVar(ds,"altitude", Float32, (), attrib = OrderedDict(
+        "units"                     => "m",
+        "long_name"                 => "Altitude of site",
+    ))
+
+    nclatitude = defVar(ds,"latitude", Float32, (), attrib = OrderedDict(
+        "units"                     => "degree_north",
+        "long_name"                 => "Latitude of site",
+        "standard_name"             => "latitude",
+    ))
+
+    nclongitude = defVar(ds,"longitude", Float32, (), attrib = OrderedDict(
+        "units"                     => "degree_east",
+        "long_name"                 => "Longitude of site",
+        "standard_name"             => "longitude",
+    ))
+    
     
     # Define variables
 
-    nctime_reference[:] = 1   # dummy value
-    ncnumber_integrated_samples[:] = 1   # dummy value
+    nctime_reference[:] = 1f0   # dummy value
+    ncnumber_integrated_samples[:] = 1f0   # dummy value
     ncminimum[:] = minimum(mwr[:LWP])
     ncmaximum[:] = maximum(mwr[:LWP])
-    nctime[:] = map(x->x.value, file_time);
+    nctime[:] = file_time #map(x->x.value, file_time);
     ncrain_flag[:] = mwr[:wet];
     ncelevation_angle[:] = mwr[:elevation];
     ncazimuth_angle[:] = mwr[:azimuth];
-    ncretrieval[:] = 1;   # dummy value
+    ncretrieval[:] = get_parameter(mwr, :retrieval, extra_params, default=1);
     ncLWP_data[:] = mwr[:LWP];
     ncIWV_data[:] = mwr[:IWV];
-
+    ncaltitude[:] = get_parameter(mwr, :alt, extra_params, default=0, lims=(0,8000));
+    nclatitude[:] = get_parameter(mwr, :lat, extra_params, lims=(-90, 90));
+    nclongitude[:] = get_parameter(mwr, :lon, extra_params, lims=(-180, 360));
+    
     close(ds)
     
 end
+
 
 # Starting to run over input parameters:
 #N_product = input_params["products"] |> !isempty |> length;

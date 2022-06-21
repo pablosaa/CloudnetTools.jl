@@ -1,4 +1,5 @@
-function lidar2nc(lidar_file::String, output_path::String; SITE="not-defined", altitude_m=0f0, tilt_angle=0f0, λ_nm=910)
+function lidar2nc(lidar_file::String, output_path::String; extra_params=Dict())
+                  #SITE="not-defined", altitude_m=0f0, tilt_angle=0f0, λ_nm=910)
 
     if !isfile(lidar_file)
         error("$lidar_file does not exist!")
@@ -8,21 +9,44 @@ function lidar2nc(lidar_file::String, output_path::String; SITE="not-defined", a
     lidar = ARMtools.getLidarData(lidar_file)
     
     time = lidar[:time];
+    file_time = datetime24hours(time)
+    #        hour.(time) + minute.(time)/60 + second.(time)/3600;
+
     arm_year = year(time[1])
     arm_month = month(time[1])
     arm_day = day(time[1])
+
     range = lidar[:height];
     beta = lidar[:β_raw]; # converted from 1/(sr km 10000) to 1/(sr m)
+
     # Default wavelength=910nm obtained from the ARM ceilometer handbook [nm]
-    λ_nm = haskey(lidar, :λ_nm) ? lidar[:λ_nm] : λ_nm
-    tilt_angle = max(tilt_angle, maximum(lidar[:TILT]));
-    altitude_m = max(lidar[:ALT], altitude_m);
-    lidar_location = join(lidar[:location]);
-    lidar_source = join(lidar[:instrumentmodel]);
-    lidar_doi = join(lidar[:doi]);
+    λ_nm = get_parameter(lidar, :λ_nm, extra_params, default=910, lims=(300, 2000))
+    #haskey(lidar, :λ_nm) ? lidar[:λ_nm] : λ_nm
+    
+    tilt_angle = get_parameter(lidar, :TILT, extra_params, default=0)
+
+    altitude_m = get_parameter(lidar, :alt, extra_params, default=0)
+
+    SITE = get_SITE(lidar, extra_params, inkeys=(:site, :campaign, :location))
+
+    # finding DOI from data file or as extra parameter?
+    doi = get_parameter(lidar, :doi, extra_params, default="none") ;
+
+    # title from the input data file?
+    arm_title = get_parameter(lidar, :title, extra_params, default="")
+
+    # generating UUID for the file:
     file_uuid = string(uuid1());
-    file_history = string(now(), " - ceilometer file created");
-    file_time = hour.(time) + minute.(time)/60 + second.(time)/3600;
+
+    # generating file history:
+    file_history = get_parameter(lidar, :history, extra_params,
+                                 default="Created by Julia Lang (CloudnetTools.jl)"*string(", ", today() ));
+
+
+    lidar_source = join(lidar[:instrumentmodel]);
+
+    file_uuid = string(uuid1());
+
     # Adaptation for CloudNetpy 
     noise_params = (100, 1e-12, 2e-7, (1.1e-8, 2.9e-8)) #(100, 1e-12, 3e-6, (1.1e-8, 2.9e-8))
     range_square = (range*1e-3).^2;  # [km²]
@@ -64,14 +88,14 @@ function lidar2nc(lidar_file::String, output_path::String; SITE="not-defined", a
         "Conventions"               => "CF-1.7",
         "file_uuid"                 => file_uuid,
         "cloudnet_file_type"        => "lidar",
-        "title"                     => lidar_location,
+        "title"                     => arm_title,
         "year"                      => Int16(arm_year),
         "month"                     => Int16(arm_month),
         "day"                       => Int16(arm_day),
-        "location"                  => lidar_location,
+        "location"                  => SITE,
         "history"                   => file_history,
         "source"                    => lidar_source,
-        "references"                => lidar_doi,
+        "references"                => doi,
     ))
 
     # Dimensions
@@ -83,7 +107,7 @@ function lidar2nc(lidar_file::String, output_path::String; SITE="not-defined", a
 
     ncbeta_raw = defVar(ds,"beta_raw", Float32, ("range", "time"), attrib = OrderedDict(
         "units"                     => "sr-1 m-1",
-        "long_name"                 => "Raw attenuated backscatter coefficient",
+        "long_name"                 => "Attenuated backscatter coefficient",
         "comment"                   => "Range corrected, attenuated backscatter.",
         "missing_value"             => NCDatasets.fillvalue(eltype(β)),
     ))
@@ -97,7 +121,7 @@ function lidar2nc(lidar_file::String, output_path::String; SITE="not-defined", a
 
     ncbeta_smooth = defVar(ds,"beta_smooth", Float32, ("range", "time"), attrib = OrderedDict(
         "units"                     => "sr-1 m-1",
-        "long_name"                 => "Smoothed attenuated backscatter coefficient",
+        "long_name"                 => "Attenuated backscatter coefficient",
         "comment"                   => "Range corrected, SNR screened backscatter coefficient.\n Weak background is smoothed using Gaussian 2D-kernel.",
         "missing_value"             => NCDatasets.fillvalue(eltype(β)),
     ))
@@ -111,22 +135,25 @@ function lidar2nc(lidar_file::String, output_path::String; SITE="not-defined", a
     nctime = defVar(ds,"time", Float32, ("time",), attrib = OrderedDict(
         "units"                     => "decimal hours since midnight",
         "long_name"                 => "Time UTC",
+        "standard_name"             => "time",
     ))
 
-    nctilt_angle = defVar(ds,"tilt_angle", Float32, (), attrib = OrderedDict(
-        "units"                     => "degrees",
-        "long_name"                 => "Tilt angle from vertical",
+    nctilt_angle = defVar(ds,"zenith_angle", Float32, (), attrib = OrderedDict(
+        "units"                     => "degree",
+        "long_name"                 => "Zenith angle",
+        "standard_name"             => "zenith_angle",
     ))
 
     ncheight = defVar(ds,"height", Float32, ("range",), attrib = OrderedDict(
         "units"                     => "m",
         "long_name"                 => "Height above mean sea level",
+        "standard_name"             => "height_above_mean_sea_level",
         "comment"                   => "Height grid from the mean sea level towards zenith.",
     ))
 
     ncwavelength = defVar(ds,"wavelength", Float32, (), attrib = OrderedDict(
         "units"                     => "nm",
-        "long_name"                 => "laser wavelength",
+        "long_name"                 => "Laser wavelength",
     ))
 
     ncaltitude = defVar(ds,"altitude", Float32, (), attrib = OrderedDict(
@@ -142,7 +169,7 @@ function lidar2nc(lidar_file::String, output_path::String; SITE="not-defined", a
     ncbeta_smooth[:] = β; # β_smooth isn't used by cloudnetpy!
     ncrange[:] = range; #...
     nctime[:] = file_time; #...
-    nctilt_angle[:] = tilt_angle; #...
+    nctilt_angle[:] = tilt_angle[1]; #...
     ncheight[:] = altitude_m .+ range; #...
     ncwavelength[:] = λ_nm; #...
     ncaltitude[:] = altitude_m;

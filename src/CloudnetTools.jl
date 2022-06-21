@@ -439,7 +439,7 @@ end
 # * For plotting CloudNet products:
 Base.include(CloudnetTools, "CloudnetVisualization.jl")
 Base.include(CloudnetTools, "Cloudnet_for_ARM.jl")
-
+Base.include(CloudnetTools, "Cloudnet_QC.jl")
 
 end  # end of Module CloudnetTools
 
