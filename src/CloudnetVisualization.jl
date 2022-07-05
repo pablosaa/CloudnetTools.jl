@@ -326,7 +326,7 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmos::Dict=Dict
                           ylim=Y_LIM, tick_dir=:out, ytickfontsize=11,
                           colorbar_title="Reflectivity [dBz]", #titlefontsize=11,
                           ylabel="Altitude [km]", xticks=(tm_tick, ""),
-                          yguidefontsize=12);
+                          guidefontsize=15, ticksfontsize=13);
 
     # adding atmospheric information
     if !isempty(atmos)
@@ -362,7 +362,7 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmos::Dict=Dict
                           st=:heatmap, color=:roma, clim=(-7, -4),
                           ylim=Y_LIM, tick_dir=:out, ytickfontsize=11,
                           colorbar_title="Lidar Backscattering log10 [sr⁻¹ m⁻¹]",
-                          ylabel="Altitude [km]", xticks=(tm_tick, ""), subplot=1);
+                          ylabel="Altitude [km]", xticks=(tm_tick, ""), guidefontsize=15, subplot=1);
     
     # adding atmospheric information
     if !isempty(atmos)
@@ -376,7 +376,11 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmos::Dict=Dict
     end
     
     # For Radiometer LWP
-    titletext = @sprintf("UTC time from %s %s", Dates.format(radar[:time][1], "dd-uuu-yyyy"), SITENAME);
+    titletext = let tmp = extrema(radar[:time]) .|> Date |> unique
+        formatstr = length(tmp)<2 ? "UTC time from %s, %s" : "UTC time from %s to %s, %s"
+        @sprintf(formatstr, (Dates.format.(tmp, "dd-uuu-yyyy")...), SITENAME);
+    end
+    
     mwrplt = Plots.plot(1,1, axis=nothing, border=:none, label=false);
     
     Plots.plot!(mwrplt, mwr[:time], mwr[:LWP],
@@ -386,15 +390,15 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmos::Dict=Dict
                 yguidefont=font(:steelblue), ytickfontsize=11,
                 xticks = (tm_tick, Dates.format.(tm_tick, "H:MM")),
                 xlim = extrema(mwr[:time]), inset=(1, BB), subplot=2,
-                xtickfontsize=12, xguidefontsize=18, #font(15),
-                xlabel = titletext);
+                tickfontsize=13, xguidefontsize=18, #font(15),
+                xlabel = titletext, xrot=45);
     #ytickfontcolor=:steelblue,
 
-    # Compisite figure:
+    # Composite figure:
 
     ll = @layout [a0{0.4h}; a{0.4h}; b{0.15h}];
     finplt = Plots.plot(radarplt, lidarplt,  mwrplt, layout=ll,  link=:y,
-                        size=(1100,900), xguidefontsize=12, yguidefontsize=12,
+                        size=(1100,900), guidefontsize=17, # yguidefontsize=12,
                         left_margin =10Plots.mm)
                         #bottom_margin=20Plots.mm)
     #                        title = titletext, titlefontsize=15,

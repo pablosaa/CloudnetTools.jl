@@ -185,6 +185,30 @@ end
 if optional parameter modelreso=true, then the model variables are
 interpolated from hourly resolution to Cloudnet resolution.
 """
+function readCLNFile(nfile::Vector{String}; modelreso=false, altfile=nothing)
+    cln_out = Dict{Symbol, Any}()
+    catvar = Dict{Symbol, Union{Nothing, Int}}()
+    ntime = -1
+
+    getdim(x,n) = findall(==(n), size(x))
+
+    foreach(nfile) do fn
+        # reading single file
+        cln = readCLNFile(fn, modelreso=modelreso, altfile=altfile)
+
+        if isempty(cln_out)
+            cln_out = cln
+            catvar = let ntime=length(cln[:time])
+                tmp = [k=>getdim(v, ntime) for (k,v) ∈ cln if typeof(v)<:Array]
+                filter(p->!isnothing(p.second), tmp) |> Dict
+            end
+        else
+            # merging every variable following time dimension v
+            [cln_out[k] = cat(cln_out[k], cln[k]; dims=v) for (k,v) ∈ catvar if !isempty(v)]
+        end
+    end
+    return cln_out
+end
 function readCLNFile(nfile::String; modelreso=false, altfile=nothing)
     @assert isfile(nfile) error("$nfile cannot be found!")
     if contains(nfile, "categorize")
