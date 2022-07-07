@@ -377,8 +377,13 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmos::Dict=Dict
     
     # For Radiometer LWP
     titletext = let tmp = extrema(radar[:time]) .|> Date |> unique
-        formatstr = length(tmp)<2 ? "UTC time from %s, %s" : "UTC time from %s to %s, %s"
-        @sprintf(formatstr, (Dates.format.(tmp, "dd-uuu-yyyy")...), SITENAME);
+        formatstr = if length(tmp)==1
+            @sprintf("UTC time from %s, %s", tmp[1], SITENAME)
+        else
+            @sprintf("UTC time from %s to %s, %s", tmp[1], tmp[2], SITENAME)
+        end
+        
+        #@sprintf(formatstr, (Dates.format.(tmp, "dd-uuu-yyyy")...), SITENAME);
     end
     
     mwrplt = Plots.plot(1,1, axis=nothing, border=:none, label=false);
