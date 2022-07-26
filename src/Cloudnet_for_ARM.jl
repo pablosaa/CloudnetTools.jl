@@ -58,12 +58,12 @@ To convert the file _armradar.20180121.nc_ into CloudNet input file:
 
 USAGE:
 
->result = ARMconverter(:radar, "/data/KAZR/armradar.20180121.nc", "/data/output")
+>result = converter(:radar, "/data/KAZR/armradar.20180121.nc", "/data/output")
 
     
     (c) Pablo Saavedra G.
 """
-function ARMconverter(the_key::Symbol, arm_filenc::String, out_path::String; extra_params=Dict())
+function converter(the_key::Symbol, arm_filenc::String, out_path::String; extra_params=Dict())
     # Here the values of dictionary keys needs to be replaces by ARM data converter function:
     list_of_func = Dict(
         :radar => ARM.kazr2nc,
@@ -80,7 +80,7 @@ function ARMconverter(the_key::Symbol, arm_filenc::String, out_path::String; ext
     return eval(ex)
 end
 # -- OR --:
-function ARMconverter(yy, mm, dd, thekey::Symbol, input_params::Dict; owndir=true)
+function converter(yy, mm, dd, thekey::Symbol, input_params::Dict; owndir=true)
 
     product = input_params[:products][thekey]
 
@@ -103,7 +103,7 @@ function ARMconverter(yy, mm, dd, thekey::Symbol, input_params::Dict; owndir=tru
     # if output path does not exist, then create it
     !isdir(OUT_PATH) && mkpath(OUT_PATH)
     
-    return ARMconverter(thekey, arm_filenc, OUT_PATH; extra_params=input_params)
+    return converter(thekey, arm_filenc, OUT_PATH; extra_params=input_params)
 end
 # ----/
 

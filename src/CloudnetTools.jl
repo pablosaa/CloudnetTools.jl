@@ -261,7 +261,6 @@ function readCLNFile(nfile::String; modelreso=false, altfile=nothing)
             #x = vars_categorize[inkey]
             !haskey(nc, x) && continue
 
-            println(x)
             tmp = nc[x][:,:]
             if haskey(nc[x].attrib, "missing_value")
                 miss_val = nc[x].attrib["missing_value"]
@@ -319,7 +318,7 @@ function readCLNFile(nfile::String; modelreso=false, altfile=nothing)
     # Classification variables to read
     vars_classific = Dict(
         :CLASSIFY => "target_classification",
-        :DETECTST =>"detection_status",
+        :DETECTST => "detection_status",
     )
 
     classfile = ifelse(isnothing(altfile),
