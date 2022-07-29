@@ -221,6 +221,10 @@ function readCLNFile(nfile::String; modelreso=false, altfile=nothing)
 
     # Categorize variables to read:
     vars_categorize = Dict(
+        # General data
+        :alt => "altitude",
+        :lat => "latitude",
+        :lon => "longitude",
         # RADAR
         :Ze => "Z",
         :V => "v",
@@ -262,6 +266,7 @@ function readCLNFile(nfile::String; modelreso=false, altfile=nothing)
             !haskey(nc, x) && continue
 
             tmp = nc[x][:,:]
+            
             if haskey(nc[x].attrib, "missing_value")
                 miss_val = nc[x].attrib["missing_value"]
             elseif haskey(nc[x].attrib, "_FillValue")
@@ -272,8 +277,13 @@ function readCLNFile(nfile::String; modelreso=false, altfile=nothing)
 
             # Cleaning missing values from variables :
             
-            varout = fill(NaN, size(tmp))
-            if eltype(tmp) <: Union{Missing, AbstractFloat}
+            varout = let dd = size(tmp)
+                isempty(dd) ? NaN : fill(NaN, dd)
+            end
+            if typeof(tmp) <: Number
+                varout = tmp
+                
+            elseif eltype(tmp) <: Union{Missing, AbstractFloat}
                 idxnan = .!ismissing.(tmp)
                 varout[idxnan] .= tmp[idxnan]
                 varout[varout .≈ miss_val] .= NaN
@@ -282,6 +292,7 @@ function readCLNFile(nfile::String; modelreso=false, altfile=nothing)
                 idxnan = tmp .≈ miss_val
                 varout[.!idxnan] .= tmp[.!idxnan]
             else
+                # in case of variables with strings
                 varout = tmp
             end
             
