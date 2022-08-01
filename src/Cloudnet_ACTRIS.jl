@@ -46,10 +46,10 @@ function categorize_it(data_files::Dict, categorize_file::String)
     try
 	uuid = catcnet.generate_categorize(data_files, categorize_file)
     catch e
-	@warn "No categorization possible: $(categorize_file)"
-	println(e)
-	return nothing
+	@warn "No categorization possible: $(categorize_file)\n $e"
+	uuid = nothing
     end
+    
     return uuid
 end
 # ----/
@@ -108,7 +108,7 @@ function generate_products(K::Symbol, fn_categ::String, output_file::String)
     catch e
         println("\e[1m\e[38;2;230;30;30;249m","* Error trying to run $K from $(fn_categ)");
 	println(e)
-	return nothing
+	uuid = nothing
     end
     
     return uuid
@@ -130,7 +130,7 @@ function generate_products(clnet_file::Dict, CLNTprod::Dict)
 	@warn "categorize file not found: $(clnet_file[:categorize]) "
     end
 		    
-    uuids = Vector[]
+    uuids = Any[]
     for (K, V) in CLNTprod
 	K == :categorize && continue
 	!V && continue
