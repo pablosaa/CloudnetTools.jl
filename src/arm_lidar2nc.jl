@@ -45,7 +45,6 @@ function lidar2nc(lidar_file::String, output_path::String; extra_params=Dict())
 
     lidar_source = join(lidar[:instrumentmodel]);
 
-    file_uuid = string(uuid1());
 
     # Adaptation for CloudNetpy 
     noise_params = (100, 1e-12, 2e-7, (1.1e-8, 2.9e-8)) #(100, 1e-12, 3e-6, (1.1e-8, 2.9e-8))

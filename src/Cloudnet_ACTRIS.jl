@@ -136,6 +136,9 @@ function generate_products(clnet_file::Dict, CLNTprod::Dict)
 end
 # ----/
 
+end # --- end of module
+# ================================================================
+
 #=
  Module including to check Quality Control rounitnes of Cloudnetpy
  ******************************************************************
@@ -177,7 +180,8 @@ end
 function Dict2DF(dict_in::Dict)
     return DataFrame(; [Symbol(k)=>v for (k,v) ∈ dict_in if !isempty(v)]...)
 end
-              
-end
-# /----
-# end of module
+# ----/
+
+end # --- end of module
+
+# end of file

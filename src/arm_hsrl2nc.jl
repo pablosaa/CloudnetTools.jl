@@ -1,8 +1,8 @@
-function hsrl2nc(lidar_file::String, output_path::String; SITE="not-defined", altitude_m=0f0, tilt_angle=0f0, λ_nm=510)
+function hsrl2nc(lidar_file::String, output_path::String; extra_params=Dict())
+                 #SITE="not-defined", altitude_m=0f0, tilt_angle=0f0, λ_nm=510)
 
     # script to read the ARM NSA HSRL data to convert to CloudNet lidar input
     # Part of (AC)3 B07 project.
-
     
     # Reading input file:
     if !isfile(lidar_file)
@@ -12,8 +12,13 @@ function hsrl2nc(lidar_file::String, output_path::String; SITE="not-defined", al
     # reading data:
     lidar = ARMtools.getLidarData(lidar_file)
 
+    arm_year = year(lidar[:time][1])
+    arm_month = month(lidar[:time][1])
+    arm_day = day(lidar[:time][1])
     
     time = lidar[:time];
+    file_time = datetime24hours(time)
+    
     range = lidar[:height]
     beta = lidar[:β_raw]  # 1/(m sr) plot scale logarithmic
 
@@ -21,17 +26,31 @@ function hsrl2nc(lidar_file::String, output_path::String; SITE="not-defined", al
 
     depol_c = lidar[:δ];
     
-    file_time = hour.(time) + minute.(time)/60 + second.(time)/3600;
-    file_uuid = string(uuid1());
-    file_history = string(now(), " - hsrl file created");
-    lidar_source = join(lidar[:location])
-    lidar_location = join(lidar[:instrumentmodel])
-    lidar_doi = haskey(lidar, :doi) ? join(lidar[:doi]) : "none" ;
+    
     # Default wavelength=510 [nm] this is from documentation, ncfile doesn't have it
-    λ_nm = haskey(lidar, :λ_nm) ? lidar[:λ_nm] : λ_nm ;
-    tilt_angle = max(tilt_angle, maximum(lidar[:TILT]));
-    altitude_m = max(lidar[:ALT], altitude_m);
+    λ_nm = get_parameter(lidar, :λ_nm, extra_params, default=510, lims=(300, 2000))
 
+    #λ_nm = haskey(lidar, :λ_nm) ? lidar[:λ_nm] : λ_nm ;
+    tilt_angle = get_parameter(lidar, :TILT, extra_params, default=0)
+    altitude_m = get_parameter(lidar, :alt, extra_params, default=0)
+
+    SITE = get_SITE(lidar, extra_params, inkeys=(:site, :campaign, :location))
+
+    # finding DOI from data file or as extra parameter?
+    doi = get_parameter(lidar, :doi, extra_params, default="none") ;
+
+    # title from the input data file?
+    arm_title = get_parameter(lidar, :title, extra_params, default="")
+
+    # generating UUID for the file:
+    file_uuid = string(uuid1());
+
+    # generating file history:
+    file_history = get_parameter(lidar, :history, extra_params,
+                                 default="Created by Julia Lang (CloudnetTools.jl)"*string(", ", today() ));
+
+    
+    lidar_source = join(lidar[:instrumentmodel]);
     ## end of reading parameters
 
 
@@ -148,9 +167,6 @@ function hsrl2nc(lidar_file::String, output_path::String; SITE="not-defined", al
     β_smooth[isnan.(β_smooth)] .= NCDatasets.fillvalue(eltype(β));
 
     # Creating cloudnetpy input netCDF file:
-    arm_year = year(lidar[:time][1])
-    arm_month = month(lidar[:time][1])
-    arm_day = day(lidar[:time][1])
     
     ARM_OUTFILE = @sprintf("%04d%02d%02d_%s_lidar.nc", arm_year, arm_month, arm_day, SITE);
     outputfile = joinpath(output_path, ARM_OUTFILE);
@@ -158,14 +174,14 @@ function hsrl2nc(lidar_file::String, output_path::String; SITE="not-defined", al
         "Conventions"               => "CF-1.7",
         "file_uuid"                 => file_uuid,
         "cloudnet_file_type"        => "lidar",
-        "title"                     => "HSRL made by Julia Lang",
+        "title"                     => arm_title,
         "year"                      => Int16(arm_year),
         "month"                     => Int16(arm_month),
         "day"                       => Int16(arm_day),
-        "location"                  => lidar_location,
+        "location"                  => SITE,
         "history"                   => file_history,
         "source"                    => lidar_source,
-        "references"                => lidar_doi, 
+        "references"                => doi, 
     ))
 
 
@@ -244,7 +260,7 @@ function hsrl2nc(lidar_file::String, output_path::String; SITE="not-defined", al
     ncdepol[:] = δ;
     ncrange[:] = range;
     nctime[:] = file_time;
-    nctilt_angle[:] = tilt_angle;
+    nctilt_angle[:] = first(tilt_angle);
     ncheight[:] = altitude_m .+ range; #... PSG to be fixed
     ncwavelength[:] = λ_nm;
     ncaltitude[:] = altitude_m
