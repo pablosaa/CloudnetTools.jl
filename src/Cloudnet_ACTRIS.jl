@@ -9,8 +9,8 @@
 =#
 module ACTRIS
 
-using DataFrames
 using PyCall
+using DataFrames
 
 catcnet = pyimport("cloudnetpy.categorize")
 procnet = pyimport("cloudnetpy.products")
@@ -45,10 +45,8 @@ function categorize_it(data_files::Dict, categorize_file::String)
     end
     return uuid
 end
-
-
-end
 # ----/
+
 
 # *****************************************************************
 """
@@ -136,6 +134,7 @@ function generate_products(clnet_file::Dict, CLNTprod::Dict)
     return uuid
 end
 # ----/
+
 
 # ================================================================
 
