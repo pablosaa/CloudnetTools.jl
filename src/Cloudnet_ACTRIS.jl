@@ -12,8 +12,15 @@ module ACTRIS
 using PyCall
 using DataFrames
 
-catcnet = pyimport("cloudnetpy.categorize")
-procnet = pyimport("cloudnetpy.products")
+const catcnet = PyNULL()
+const procnet = PyNULL()
+const cloudnetpy_qc = PyNULL()
+
+function __init__()
+    copy!(catcnet, pyimport("cloudnetpy.categorize"))
+    copy!(procnet, pyimport("cloudnetpy.products"))
+    copy!(cloudnetpy_qc, pyimport("cloudnetpy_qc"))
+end
 
 # ***************************************************************
 """
@@ -123,15 +130,16 @@ function generate_products(clnet_file::Dict, CLNTprod::Dict)
 	@warn "categorize file not found: $(clnet_file[:categorize]) "
     end
 		    
+    uuids = Vector[]
     for (K, V) in CLNTprod
 	K == :categorize && continue
 	!V && continue
 
         uuid = generate_products(K, clnet_file[:categorize], clnet_file[K])
-
+        push!(uuids, uuid)
     end
 
-    return uuid
+    return uuids
 end
 # ----/
 
@@ -144,8 +152,6 @@ end
  ++++ MODULE QC for checking generated arm input data files +++++++
  ******************************************************************
 =#
-
-cloudnetpy_qc = pyimport("cloudnetpy_qc")
 
 function cloudnet_qc(data_file::Dict)
 
