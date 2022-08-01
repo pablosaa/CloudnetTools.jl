@@ -127,7 +127,7 @@ function generate_products(clnet_file::Dict, CLNTprod::Dict)
 	K == :categorize && continue
 	!V && continue
 
-        uuid = generate_products(clnet_file[:categorize], K, clnet_file[K])
+        uuid = generate_products(K, clnet_file[:categorize], clnet_file[K])
 
     end
 
