@@ -43,11 +43,11 @@ if failed returns a warning message and nothing
 """
 function categorize_it(data_files::Dict, categorize_file::String)
 
-    try
-	uuid = catcnet.generate_categorize(data_files, categorize_file)
+    uuid = try
+	catcnet.generate_categorize(data_files, categorize_file)
     catch e
 	@warn "No categorization possible: $(categorize_file)\n $e"
-	uuid = nothing
+	nothing
     end
     
     return uuid
@@ -102,13 +102,13 @@ function generate_products(K::Symbol, fn_categ::String, output_file::String)
     end
     
     # creating expression for the corresponding cloudnetpy product:
-    ex = Meta.parse("uuid=procnet.generate_$K(\"$(fn_categ)\", \"$(output_file)\")")
-    try
+    ex = Meta.parse("procnet.generate_$K(\"$(fn_categ)\", \"$(output_file)\")")
+    uuid = try
         eval(ex)
     catch e
         println("\e[1m\e[38;2;230;30;30;249m","* Error trying to run $K from $(fn_categ)");
 	println(e)
-	uuid = nothing
+	nothing
     end
     
     return uuid
