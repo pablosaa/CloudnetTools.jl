@@ -269,9 +269,9 @@ OUTPUT:
 function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3)
 
     # Defining constants:
-    const ntime = length(clnet[:time])
-    const cloud_flags = (1,3,5,7)
-    const hydro_flags = (1:7)
+    ntime = length(clnet[:time])
+    cloud_flags = (1,3,5,7)
+    hydro_flags = (1:7)
 
     # Smoothing Cloudnet classification array to minimize noise:
     CLASSIFY = round.(mapwindow(median, clnet[:CLASSIFY], (5,5)));
