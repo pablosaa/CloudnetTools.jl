@@ -3,6 +3,7 @@
 File contains auxiliary functions for the CloudnetTools.jl package
 ********************************************************************
 =#
+using ImageFiltering
 
 # ****
 """
