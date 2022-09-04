@@ -4,6 +4,7 @@ File contains auxiliary functions for the CloudnetTools.jl package
 ********************************************************************
 =#
 using ImageFiltering
+using Statistics
 
 # ****
 """
@@ -265,6 +266,8 @@ OUTPUT:
 * CBH::Matrix(ntime, nlayers) with cloud base height in m
 * CTH::Matrix(ntime, nlayers) with cloud top height in m
 
+NOTE: be sure clnet[:height] and lidar[:CBH] have the same units, e.g. m
+
 """
 function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3)
 
@@ -283,7 +286,56 @@ function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3)
 
     # cheking if optional lidar data is provided:
     if !isnothing(lidar) && isa(lidar, Dict)
-        CBH_lidar = Interpolate2cloudnet(clnet, lidar[:time], lidar[:CBH])
+        CBH_lidar = Interpolate2Cloudnet(clnet, lidar[:time], lidar[:CBH])
+    end
+    
+    # starting iteration over time dimension:
+    foreach(1:ntime) do k
+        CT = 1
+	
+        # assigning true/false pixels corresponding to cloud_flags:
+        tmp = map(j->any(j .∈ cloud_flags), CLASSIFY[:, k])
+
+        for ih ∈ (1:nlayers)
+            CB = if isnothing(lidar)
+                tmp[CT:end] |> findfirst
+            elseif isnan(CBH_lidar[k])
+                nothing
+            else
+                abs.(clnet[:height] .- CBH_lidar[k]) |> argmin
+            end
+            isnothing(CB) && continue
+            CT = findfirst(j->all(j .∉ hydro_flags), CLASSIFY[CB:end, k])
+            CT += CB - 1
+            
+            CBH[k, ih] = clnet[:height][CB]
+            CTH[k, ih] = clnet[:height][CT]
+        end
+        
+    end
+
+    return CBH, CTH
+end
+
+
+function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3)
+
+    # Defining constants:
+    ntime = length(clnet[:time])
+    cloud_flags = (1,3,5,7)
+    hydro_flags = (1:7)
+
+    # Smoothing Cloudnet classification array to minimize noise:
+    CLASSIFY = round.(mapwindow(median, clnet[:CLASSIFY], (5,5)));
+    #CATEBITS = round.(imfilter(clnet[:CATEBITS], ker2d));
+    
+    # creating output arrays:
+    CBH = fill(NaN32, ntime, nlayers)
+    CTH = fill(NaN32, ntime, nlayers)
+
+    # cheking if optional lidar data is provided:
+    if !isnothing(lidar) && isa(lidar, Dict)
+        CBH_lidar = Interpolate2Cloudnet(clnet, lidar[:time], lidar[:CBH])
     end
     
     # starting iteration over time dimension:
@@ -339,6 +391,7 @@ function Interpolate2Cloudnet(clnet::Dict, time_in::Vector, var_in::Vector)
     cnt_hr = datetime24hours(clnet[:time])
     var_hr = datetime24hours(time_in)
     itp = LinearInterpolation(var_hr, var_in, extrapolation_bc=Linear())
+
     return itp(cnt_hr)
 end
 function Interpolate2Cloudnet(clnet::Dict, data_in::Dict, var::Symbol)
@@ -346,8 +399,12 @@ function Interpolate2Cloudnet(clnet::Dict, data_in::Dict, var::Symbol)
     var_hr = datetime24hours(data_in[:time])
     
     nodes = (data_in[:height], var_hr)
+
     itp = interpolate(nodes, data_in[var], Gridded(Linear()))
-    outvar = [itp(i,j) for i ∈ clnet[:height], j ∈ cnt_hr]    
+    extp = extrapolate(itp, Flat())
+
+    outvar = [extp(i,j) for i ∈ clnet[:height], j ∈ cnt_hr]    
+
     return outvar
 end
 # ----/
@@ -357,28 +414,33 @@ end
 Function to estimate the temperature of given altitudes,
 For instance the temperature at cloud base & top heights.
 
-julia> T_h = cloud_temperature(data::Dict, H::Vector; t_hr::Vector)
+julia> T_h = cloud_temperature(data, H)
+
+julia> T_h = cloud_temperature(data, H; t_hr::Vector)
 
 julia> T_h = cloud_temperature(data, H, clnet=clnet, var=:Temp)
 
 WHERE:
-* data::Dict data with variable keys :time and :T for temperature,
-* H::Vector with the altitudes at which the temperature is estimated,
+* data::Dict() data with variable keys :time and :T for temperature, (can be clnet),
+* H::Array{T}(time, layers) with the altitudes at which the temperature is estimated,
 * clnet::Dict (Optional) when data is not same resolution, use cloudnet :time,
 * var::Symbol (Optional) variable from data to be used, default :T
 
 Input Dict data must have variables with key :T for temperature and :height.
-NOTE: The units of H_in and data[:height] have to be the same!
+The output will have the same units as data[:T] and same dimentions as H.
+
+NOTE: be sure H_in and data[:height] have the same units, e.g. m
 
 """
-function cloud_temperature(data::Dict, H_in::Vector; clnet=nothing, var=:T)
-
+function cloud_temperature(data::Dict, H_in::Array; clnet=nothing, var=:T)
+    
     !haskey(data, :height) && @error "data has not key :height"
     !haskey(data, var) && @error "data has not key $(var)"
     
-    nt = length(H_in)
+    nt = size(H_in,1)
+    nlyr = size(H_in, 2)
         
-    T_h = similar(H_in)
+    T_h = fill(NaN32, size(H_in)...)
 
     T_var = if !isnothing(clnet) && isa(clnet, Dict)
         Interpolate2Cloudnet(clnet, data, var)
@@ -387,12 +449,15 @@ function cloud_temperature(data::Dict, H_in::Vector; clnet=nothing, var=:T)
     else
         @error "data :time length not compatible with H_in length!"    
     end
-    
-    foreach(enumerate(H_in)) do (i, h)
-        idx_h = abs.(data[:height] .- h) |> argmin
-        T_h[i] = T_var[idx_h, i]
+
+    for h ∈ 1:nlyr
+	for i ∈ 1:nt
+	    isnan(H_in[i, h]) && continue
+	    idx_h = abs.(data[:height] .- H_in[i, h]) |> argmin
+	    T_h[i, h] = T_var[idx_h, i]
+	end
     end
-    
+
     return T_h
 end
 # ----/
