@@ -277,7 +277,7 @@ function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3)
     hydro_flags = (1:7)
 
     # Smoothing Cloudnet classification array to minimize noise:
-    CLASSIFY = round.(mapwindow(median, clnet[:CLASSIFY], (5,5)));
+    CLASSIFY = round.(mapwindow(minimum, clnet[:CLASSIFY], (1,5)));
     #CATEBITS = round.(imfilter(clnet[:CATEBITS], ker2d));
     
     # creating output arrays:
@@ -312,59 +312,6 @@ function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3)
             CTH[k, ih] = clnet[:height][CT]
         end
         
-    end
-
-    return CBH, CTH
-end
-
-
-function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3)
-
-    # Defining constants:
-    ntime = length(clnet[:time])
-    cloud_flags = (1,3,5,7)
-    hydro_flags = (1:7)
-
-    # Smoothing Cloudnet classification array to minimize noise:
-    CLASSIFY = round.(mapwindow(median, clnet[:CLASSIFY], (5,5)));
-    #CATEBITS = round.(imfilter(clnet[:CATEBITS], ker2d));
-    
-    # creating output arrays:
-    CBH = fill(NaN32, ntime, nlayers)
-    CTH = fill(NaN32, ntime, nlayers)
-
-    # cheking if optional lidar data is provided:
-    if !isnothing(lidar) && isa(lidar, Dict)
-        CBH_lidar = Interpolate2Cloudnet(clnet, lidar[:time], lidar[:CBH])
-    end
-    
-    # starting iteration over time dimension:
-    foreach(1:ntime) do k
-        ib = 1
-        # assigning true/false pixels corresponding to cloud_flags:
-        tmp = map(j->any(j .∈ cloud_flags), CLASSIFY[:, k])
-
-        for ih ∈ (1:nlayers)
-            CB = if isnothing(lidar)
-                tmp[ib:end] |> findfirst
-            elseif isnan(CBH_lidar[k])
-                nothing
-            else
-                abs.(clnet[:height] .- CBH_lidar[k]) |> argmin
-            end
-            isnothing(CB) && continue
-            
-            CT = findfirst(j->all(j .∉ hydro_flags), CLASSIFY[CB:end, k])
-            CT += CB - 1
-            ib = CT
-            cloud_layer = clnet[:height][[CB, CT]]
-
-            # adding previous layer to cloud base and top heights:
-            ih > 1 && (cloud_layer .+= [CBH[k, ih-1], CTH[k, ih-1]])
-            
-            CBH[k, ih] = cloud_layer[1]
-            CTH[k, ih] = cloud_layer[2]
-        end
     end
 
     return CBH, CTH
