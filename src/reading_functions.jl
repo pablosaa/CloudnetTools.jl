@@ -200,6 +200,17 @@ function readCLNFile(nfile::String; modelreso=false, altfile=nothing)
 
         var_output[:height] = nc["height"][:]
 
+        # Reading some global attributes:
+        if haskey(nc.attrib, "software_version")
+            var_output[:version] = nc.attrib["software_version"]
+            var_output[:algorithm] = "tropos"
+            vars_categorize[:QV] = "specific_humidity"
+        end
+    
+        if haskey(nc.attrib, "cloudnetpy_version")
+            var_output[:version] = nc.attrib["cloudnetpy_version"]
+            var_output[:algorithm] = "cloudnetpy"
+        end
       
         for (inkey, x) ∈ vars_categorize
             #x = vars_categorize[inkey]

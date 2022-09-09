@@ -237,9 +237,11 @@ function ConvertModelResolution(cln_in::Dict{Symbol, Any},
     MODELVAR = (:T, :Pa, :UWIND, :VWIND, :QV)
 
     map(MODELVAR) do var
-        itp = interpolate(nodes, cln_in[var], Gridded(Linear()))
-        outvar = [itp(i,j) for i ∈ cln_height, j ∈ cln_time]
-        cln_in[var] = outvar
+        if haskey(cln_in, var)
+            itp = interpolate(nodes, cln_in[var], Gridded(Linear()))
+            outvar = [itp(i,j) for i ∈ cln_height, j ∈ cln_time]
+            cln_in[var] = outvar
+        end
     end
 
     return cln_in

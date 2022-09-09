@@ -97,12 +97,12 @@ WHERE:
 * SITENANE::String (optional) string with name of site,
 * maxhgt::Number (optional) indicating the maximum height in km, default=8,
 * showlegend::Bool (optional) show Cloudnet legend colors, default=true
-* showatm::Dict(:wind, :isoT) to add meteo data to the plot, "wind" & "iso-temp", default=true
+* showatm::Dict(:wind, :isoT, :procas) to add meteo data to the plot, "wind" & "iso-temp" or "Profile cascade of variable", default=(true, true, false)
 Output:
 * plt::Plot output plot object.
 """
 function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=true,
-                        showatm=Dict(:wind=>true, :isoT=>true), savefig=:none)
+                        showatm=Dict(:wind=>true, :isoT=>true, :procas=>false), savefig=:none)
 
     # defining time axis ticks:
     tm_tick = cnt[:time][1]:Minute(90):cnt[:time][end];
@@ -134,6 +134,7 @@ function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=true,
     #TLEV = [5, 0, -5, -10, -15, -20, -25, -30]
     BB = bbox(0,0,1,1)
 
+    Nsubplt = 2
     if showatm[:isoT]
         # converting to Celcius in case Temperature is in K
         Tin = let T = cnt[:T][1:ihmax, Xin]
@@ -143,19 +144,24 @@ function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=true,
         #Tlevels = extrema(Tin) |> x->collect(ceil(x[1]):5:floor(x[2]))
         Tlevels = extrema(filter(!isnan,Tin)) |> x->ceil.(range(ceil(x[1]), stop=floor(x[2]), length=7))
         classplt = Attach_Isotherms(classplt, Xin, Yin[1:ihmax], Tin,
-                                    (1, BB), 2, TLEV = Tlevels)
+                                    (1, BB), Nsubplt, TLEV = Tlevels)
+        Nsubplt += 1
     end
 
     if showatm[:wind]
         classplt = Attach_Windvector(classplt, Xin[1:2:end], Yin[2:4:ihmax],
                                      cnt[:UWIND][2:4:ihmax, Xin[1:2:end]],
                                      cnt[:VWIND][2:4:ihmax, Xin[1:2:end]],
-                                     (1, BB), 3)
+                                     (1, BB), Nsubplt)
+        Nsubplt += 1
     end
     #
     #θv = @. cnt[:T][1:ihmax,2:2:end]*(1024f0/cnt[:Pa][1:ihmax,2:2:end])^0.286;
-    
-    #Attach_Profile_Cascate(classplt, Xin[2:2:end], Yin[1:ihmax], θv, (1,BB), 4)
+    if showatm[:procas]
+        Tin = cln[:T]
+        Attach_Profile_Cascate(classplt, Xin[2:2:end], Yin[1:ihmax], Tin, (1,BB), Nsubplt)
+        Nsubplt += 1
+    end
     
     if showlegend
         classleg = ShowLegendCloudNetClassification("classific")
