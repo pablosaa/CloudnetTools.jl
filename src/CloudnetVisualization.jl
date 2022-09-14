@@ -158,7 +158,7 @@ function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=true,
     #
     #θv = @. cnt[:T][1:ihmax,2:2:end]*(1024f0/cnt[:Pa][1:ihmax,2:2:end])^0.286;
     if showatm[:procas]
-        Tin = cln[:T]
+        Tin = cnt[:T]
         Attach_Profile_Cascate(classplt, Xin[2:2:end], Yin[1:ihmax], Tin, (1,BB), Nsubplt)
         Nsubplt += 1
     end
