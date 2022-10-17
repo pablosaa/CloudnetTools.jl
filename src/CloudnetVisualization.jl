@@ -301,7 +301,7 @@ end
 # ************************************************************
 # Functions to plot the data
 #
-function show_measurements(cln::Dict; atmosplot=true, SITENAME::String="", maxhgt=8, savefig=:none)
+function show_measurements(cln::Dict; atmosplot=Dict(), SITENAME::String="", maxhgt=8, savefig=:none)
     # converting to access the Cloudnet data:
     radar = Dict(K => cln[K] for K in [:time, :height, :Ze])
     lidar = Dict(K => cln[K] for K in [:time, :height, :β])
@@ -310,14 +310,14 @@ function show_measurements(cln::Dict; atmosplot=true, SITENAME::String="", maxhg
     rs_time = haskey(cln, :model_time) ? :model_time : :time
 
     rs_list = [rs_time, :model_height, :T, :UWIND, :VWIND]
-    rs = atmosplot ? Dict(K => cln[K] for K in rs_list) : Dict()
+    rs = isempty(atmosplot) ? Dict(K => cln[K] for K in rs_list) : atmosplot
     #atmosplot && (rs[:model_height] *= 1f-3)  # converting to km
 
         
-    return show_measurements(radar, lidar, mwr, atmos=rs, SITENAME=SITENAME, maxhgt=maxhgt, savefig=savefig)
+    return show_measurements(radar, lidar, mwr, atmosplot=rs, SITENAME=SITENAME, maxhgt=maxhgt, savefig=savefig)
 end
 # --- OR 
-function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmos::Dict=Dict(),
+function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=Dict(),
                            SITENAME::String="", maxhgt=8, savefig=false)
 
 
@@ -335,7 +335,8 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmos::Dict=Dict
                           guidefontsize=15, ticksfontsize=13);
 
     # adding atmospheric information
-    if !isempty(atmos)
+    atmos=atmosplot
+    if !isempty(atmosplot)
         # Preparing to add graphs for isotherms and wind vectors:
         Xin = haskey(atmos, :model_time) ? Vector(1:length(atmos[:model_time])) : unique(round.(Int64, range(1, stop=length(atmos[:time]), length=25)))
 
@@ -371,7 +372,7 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmos::Dict=Dict
                           ylabel="Altitude [km]", xticks=(tm_tick, ""), guidefontsize=15, subplot=1);
     
     # adding atmospheric information
-    if !isempty(atmos)
+    if !isempty(atmosplot)
         Attach_Isotherms(lidarplt, Xin, Yin, Tin,
                          (1, BB), 2, TLEV = Tlevels)
     
