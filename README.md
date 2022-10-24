@@ -1,4 +1,6 @@
 # CloudnetTools.jl
+[![DOI](https://zenodo.org/badge/387530180.svg)](https://zenodo.org/badge/latestdoi/387530180)
+
 A set of Julia routines and functions to work with Cloudnet classification algorithm and its data files.
 
 This package is mean to interface with the Cloudnetpy version developed by [Finnish Meteorological Institute](https://fmi.fi) under the ACTRIS program. There is a minor support to work with the Cloudnet output files from the legacy code (Matlab-based).
