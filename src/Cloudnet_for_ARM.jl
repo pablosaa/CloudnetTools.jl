@@ -58,7 +58,7 @@ To convert the file _armradar.20180121.nc_ into CloudNet input file:
 
 USAGE:
 
->result = converter(:radar, "/data/KAZR/armradar.20180121.nc", "/data/output")
+julia> result = converter(:radar, "/data/KAZR/armradar.20180121.nc", "/data/output")
 
     
     (c) Pablo Saavedra G.
