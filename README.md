@@ -1,7 +1,7 @@
 # CloudnetTools.jl
-A set of Julia routines and functions to work with Cloudnet classification algorithm and its data files.
+[![DOI](https://zenodo.org/badge/387530180.svg)](https://zenodo.org/badge/latestdoi/387530180)
 
-This package is mean to interface with the Cloudnetpy version developed by [Finnish Meteorological Institute](https://fmi.fi) under the ACTRIS program. There is a minor support to work with the Cloudnet output files from the legacy code (Matlab-based).
+This package is a set of Julia routines and functions to work with the Cloudnet classification algorithm. The main features are to interface with the Cloudnetpy version developed by [Finnish Meteorological Institute](https://fmi.fi) under the ACTRIS program, adapt and process ARM data to be compliant with the Cloudnetpy input requirements, and process the output files for further development. There is a minor support to work with the Cloudnet output files from the legacy code (Matlab-based).
 
 ## Installation
 It is assumed that you have Cloudnetpy installed in your machine. To install Cloudnetpy follow the indications by [FMI Cloudnet installation](https://cloudnetpy.readthedocs.io/en/latest/installation.html).
@@ -9,7 +9,7 @@ It is assumed that you have Cloudnetpy installed in your machine. To install Clo
 ### Using Cloudnet in Julia
 The following packages are required to use Cloudnet from Julia:
 * PyCall.jl
-* ARMtools.jl
+* [ARMtools.jl](https://github.com/pablosaa/ARMtools.jl)
 
 and the following 3 steps are need to install CloudnetTools.jl :
 
@@ -82,7 +82,7 @@ julia> data_files = Dict(
         :radar  => "/data/cloudnet/input/20190119_nsa_radar.nc",
         :lidar  => "/data/cloudnet/input/20190119_nsa_lidar.nc",
         :mwr    => "/data/cloudnet/input/20190119_nsa_mwr.nc",
-        :model  => /data/cloudnet/input/20190119_arm-nsa_ecmwf.nc",
+        :model  => "/data/cloudnet/input/20190119_arm-nsa_ecmwf.nc",
         )
 julia> ACTRIS.categorize_it(data_files, "/data/cloudnet/output/20190119_nsa_categorization.nc")
 ```
