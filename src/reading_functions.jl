@@ -187,6 +187,8 @@ function readCLNFile(nfile::String; modelreso=false, altfile=nothing)
         :QV => "q",
         :UWIND => "uwind",
         :VWIND => "vwind",
+        :gas_atten => "radar_gas_atten",
+        :liq_atten => "radar_liquid_atten",
     )
 
 

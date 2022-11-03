@@ -141,18 +141,50 @@ Integration of matrix x over dims=1 skipping NaN, optionally
 the integration is perform with respect of vector dh.
 USAGE:
 
-Xt = ∫fdh(xi::Matrix)
-Xt = ∫fdh(xi::Matrix; dh::Vector)
+Xt = ∫fdh(Xi::Matrix, H::Vector)
+Xt = ∫fdh(Xi::Matrix, H::Vector; h₀=CBH, hₜ=CBT)
 
+WHERE:
+
+Xi -> Matrix to integrate over 1st dimension,
+H  -> Vector with the integrating variable, same length as Xi 1st dimension,
+h₀ -> (Optional) Vector with low limit height to integrate from,
+hₜ -> (Opitonal) Vector with top limit height to integrate to.
+
+If neither h₀ nor hₜ are provided, then the integral is performed over whole Xi 1st
+dimension. Note that h₀ and hₜ, if provided, need to have same length as Xi 2nd dimension.
+
+OUTPUT:
+Xt -> Vector with the integrated value, same length as Xi 2nd dimension.
+ 
 """
-function ∫fdh(x::AbstractArray, dx::AbstractVector)
-    δx = Vector{eltype(x)}(undef, length(dx)) .= 0
-    δx[2:end] = dx |> diff
-    δx[1] =  δx[2:end] |> minimum
+function ∫fdh(x::AbstractArray, H::AbstractVector; h₀=Real[], hₜ=Real[])
+    # getting dimensions:
+    nheight, ntime = size(x)
+
+    # checking dimensions:
+    nheight != length(H) && @error "Heights muss have same length as matrix 1st dim."
+    !isempty(h₀) && ntime != length(h₀) && @error "Optional variable h₀ must have length same as matrix 2nd dim."
+    !isempty(hₜ) && ntime != length(hₜ) && @error "Optional variable hₜ must have length same as matrix 2nd dim."
+	
+    # defining the derivate of H
+    δh = Vector{eltype(x)}(undef, length(H)) .= 0
+    δh[2:end] = diff(H)
+    δh[1] =  δh[2:end] |> minimum
 
     x[isnan.(x)] .= 0.0
-    
-    return sum(x.*δx, dims=1) |> vec
+	
+    # finding the limits for integration:
+    i0 = isempty(h₀) ? 1 : [argmin(abs.(H .- z)) for z ∈ h₀]
+    it = isempty(hₜ) ? nheight : [argmin(abs.(H .- z)) for z ∈ hₜ]
+
+    # integrating variable within limits:
+    𝐼₀ₜ = fill(NaN32, ntime)
+    foreach(enumerate(eachcol(x))) do (i,X)
+	lims = i0[i]:it[i]
+	𝐼₀ₜ[i] = X[lims]'*vec(δh[lims])
+    end
+    return 𝐼₀ₜ
 end
 #----/
 

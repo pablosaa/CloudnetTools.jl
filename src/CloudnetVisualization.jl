@@ -9,7 +9,7 @@ using Plots
 using Dates
 using Printf
 
-function show_LWC_IWC(LWC::Dict, IWC::Dict; SITENAME="", mxhgt=10, twoplots=false, showisoT=true, savefig=:none, cnt::Dict)
+function show_LWC_IWC(LWC::Dict, IWC::Dict; SITENAME="", mxhgt=10, twoplots=false, showisoT=true, savefig=:none, cnt::Dict, extras=Dict())
     
     # defining parameters for LWC:
     CLiqLIM = (1f-2, 0.5f1) #(-2, 1);
@@ -78,7 +78,7 @@ function show_LWC_IWC(LWC::Dict, IWC::Dict; SITENAME="", mxhgt=10, twoplots=fals
 
         # creating output layout plot:
         ll = @layout [a{0.96w} b{0.02w} c{0.02w}];
-        outplt = plot!(cmliq, mxplt, inset=(1, bbox(0,0,0.8,1)), subplot=3, size=(900, 600), dpi=600, margin=15Plots.mm);
+        outplt = plot!(cmliq, mxplt, inset=(1, bbox(0,0,0.8,1)), subplot=3, size=(900, 600), dpi=600, margin=15Plots.mm; extras...);
         #outplt = plot(mxplt, cmliq, cmice, layout=ll, size=(900,600), dpi=300, bottom_margin=15Plots.mm, left_margin=[15Plots.mm 0Plots.mm 0Plots.mm 0Plots.mm]);
     end
     
@@ -104,15 +104,15 @@ Output:
 * plt::Plot output plot object.
 """
 function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=true,
-                        showatm=Dict(:wind=>true, :isoT=>true, :procas=>false), savefig=:none)
+                        showatm=Dict(:wind=>true, :isoT=>true, :procas=>false), savefig=:none, extras=Dict())
 
     # defining time axis ticks:
-    tm_tick = cnt[:time][1]:Minute(90):cnt[:time][end];
+    tm_tick = cnt[:time][1]:Minute(120):cnt[:time][end];
 
-    Xstrname = "TIME UTC from "*Dates.format(cnt[:time][2], "dd.u.yyyy")
+    Xstrname = "TIME UTC [hour] from "*Dates.format(cnt[:time][2], "dd.u.yyyy")
 
-    strtitle = (tm_tick[1], 7.5, text("CloudNet Target Classification "*SITENAME, 11, halign=:left))
-    strtitle = !isempty(SITENAME) ? "CloudNet Target Classification "*SITENAME : ""
+    strtitle = (tm_tick[1], 7.5, text("Cloudnet Target Classification "*SITENAME, 11, halign=:left))
+    strtitle = !isempty(SITENAME) ? "Cloudnet Target Classification "*SITENAME : ""
     
     cldnet = CloudNetPalette("classific")
     l = grid(2,1, heights=(0.2,0.8)) #[a{0.25h}; b];
@@ -123,8 +123,8 @@ function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=true,
                     color=palette(cldnet, 11), ylim=Y_LIM, clim=(0,10),
                     ylabel="Height A.G.L. [km]", ytickfontsize=11, minorticks=true,
                     xlabel= Xstrname, tick_direction=:out, 
-                    xticks=(tm_tick, Dates.format.(tm_tick, "H:MM")), xrot=45,
-                    xtickfontsize=13, xguidefontsize=18, title=strtitle);  # xguidefont=font(12)
+                    xticks=(tm_tick, Dates.format.(tm_tick, "H")), xrot=0,
+                    xtickfontsize=13, xguidefontsize=18, title=strtitle; extras...);  # xguidefont=font(12)
 
     # Preparing to add graphs for isotherms and wind vectors:
     ihmax = findlast(1f-3cnt[:model_height] .≤ maxhgt)
@@ -221,16 +221,16 @@ function ShowLegendCloudNetClassification(LegendType::String)
         txt_labels = [
             #X, Y, "short_name", "long_name"
             (40, 1,"Clear sky", "Clear sky"),
-            (2, 1,"Liquid drops", "Cloud liquid droplets only"), 
-            (20, 1,"Drizzle | Rain", "Drizzle or rain"), 
-            (20, 2,"Drizzle & Cloud", "Drizzle or rain coexisting with cloud liquid droplets"),
+            (2, 1,"Liquid droplets", "Cloud liquid droplets only"), 
+            (20, 1,"Drizzle | rain", "Drizzle or rain"), 
+            (20, 2,"Drizzle & liquid droplets", "Drizzle or rain coexisting with cloud liquid droplets"),
             (2, 3,"Ice", "Ice particles"), 
-            (2, 2, "SLC & Ice", "Ice coexisting with supercooled liquid droplets"),
-            (20, 3,"Melting", "Melting ice particle"),
-            (20, 4,"Melting & cloud", "Melting ice particles coexisting with cloud liquid droplets"), 
+            (2, 2, "Ice & SCL", "Ice coexisting with supercooled liquid droplets"),
+            (20, 3,"Melting ice", "Melting ice particle"),
+            (20, 4,"Melting ice & liquid droples", "Melting ice particles coexisting with cloud liquid droplets"), 
             (40, 2,"Aerosol", "Aerosol particles/no cloud or precipitation"), 
             (40, 3,"Insects", "Insects/no cloud or precipitation"), 
-            (40, 4,"Aerosol & Insects", "Aerosol coexisting with insects/no cloud or precipitation")
+            (40, 4,"Aerosol & insects", "Aerosol coexisting with insects/no cloud or precipitation")
         ];
     elseif LegendType == "detection"
         txt_labels = [
@@ -334,9 +334,10 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
     radarplt = Plots.plot(radar[:time], 1f-3radar[:height], radar[:Ze],
                           st=:heatmap, color=palette(:lighttest,20), clim=(-30, 10),
                           ylim=Y_LIM, tick_dir=:out, ytickfontsize=11,
-                          colorbar_title="Reflectivity [dBz]", #titlefontsize=11,
-                          ylabel="Altitude [km]", xticks=(tm_tick, ""),
-                          guidefontsize=15, ticksfontsize=13);
+                          colorbar_title="Radar Reflectivity [dBz]", #titlefontsize=11,
+                          ylabel="Height A.G.L. [km]", xticks=(tm_tick, ""),
+                          guidefontsize=15, ticksfontsize=13,
+                          bottom_margin=-1.5Plots.mm, framestyle=:box);
 
     # adding atmospheric information
     atmos=atmosplot
@@ -374,8 +375,10 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
     lidarplt = Plots.plot(lidar[:time], 1f-3lidar[:height], log10.(lidar[:β]),
                           st=:heatmap, color=:roma, clim=(-7, -4),
                           ylim=Y_LIM, tick_dir=:out, ytickfontsize=11, colorbar_width=1,
-                          colorbar_title="Lidar Backscattering log10 [sr⁻¹ m⁻¹]",
-                          ylabel="Altitude [km]", xticks=(tm_tick, ""), guidefontsize=15, subplot=1);
+                          colorbar_title="Lidar Attenuated\nBackscattering coefficient log10 [sr⁻¹ m⁻¹]",
+                          ylabel="Height A.G.L. [km]", xticks=(tm_tick, ""),
+                          guidefontsize=15, subplot=1, bottom_margin=-1.5Plots.mm,
+                          framestyle=:box);
     
     # adding atmospheric information
     if !isempty(atmosplot)
@@ -391,9 +394,9 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
     # For Radiometer LWP
     titletext = let tmp = extrema(radar[:time]) .|> Date |> unique
         formatstr = if length(tmp)==1
-            @sprintf("UTC time from %s, %s", tmp[1], SITENAME)
+            @sprintf("Time UTC [hour] from %s, %s", tmp[1], SITENAME)
         else
-            @sprintf("UTC time from %s to %s, %s", tmp[1], tmp[2], SITENAME)
+            @sprintf("Time UTC [hour] from %s to %s, %s", tmp[1], tmp[2], SITENAME)
         end
         
         #@sprintf(formatstr, (Dates.format.(tmp, "dd-uuu-yyyy")...), SITENAME);
@@ -406,10 +409,10 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
                 ylabel="LWP [g m⁻²]", l=2,
                 label=false,  tick_dir=:out,
                 yguidefont=font(:steelblue), ytickfontsize=11,
-                xticks = (tm_tick, !isnothing(cln) ? "" : Dates.format.(tm_tick, "H:MM")),
+                xticks = (tm_tick, !isnothing(cln) ? "" : Dates.format.(tm_tick, "H")),
                 xlim = extrema(mwr[:time]), inset=(1, BB), subplot=2,
-                tickfontsize=13, xguidefontsize=18, #font(15),
-                xlabel = !isnothing(cln) ? "" : titletext, xrot=45);
+                tickfontsize=13, xguidefontsize=18, framestyle=:box, #font(15),
+                xlabel = !isnothing(cln) ? "" : titletext, xrot=0);
     #ytickfontcolor=:steelblue,
 
     # Composite figure:
