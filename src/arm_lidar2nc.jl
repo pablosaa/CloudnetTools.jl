@@ -1,12 +1,23 @@
-function lidar2nc(lidar_file::String, output_path::String; extra_params=Dict())
-                  #SITE="not-defined", altitude_m=0f0, tilt_angle=0f0, λ_nm=910)
-
+function lidar2nc(lidar_file::String, output_path::String; extra_params=Dict{Symbol,Any}())
     if !isfile(lidar_file)
         error("$lidar_file does not exist!")
     end
 
     # Reading input ARM netCDF file:
     lidar = ARMtools.getLidarData(lidar_file)
+
+    return lidar2nc(lidar, output_path, extra_params=extra_params)
+end
+function lidar2nc(lidar_file::Vector{String}, output_path::String; extra_params=Dict{Symbol,Any}())
+
+    # Reading input ARM netCDF file:
+    lidar = ARMtools.getLidarData(lidar_file)
+
+    return lidar2nc(lidar, output_path, extra_params=extra_params)
+end
+function lidar2nc(lidar::Dict, output_path::String; extra_params=Dict{Symbol,Any}())
+                  #SITE="not-defined", altitude_m=0f0, tilt_angle=0f0, λ_nm=910)
+
     
     time = lidar[:time];
     file_time = datetime24hours(time)
@@ -174,7 +185,7 @@ function lidar2nc(lidar_file::String, output_path::String; extra_params=Dict())
     ncaltitude[:] = altitude_m;
     close(ds)
 
-    return nothing
+    return ARM_OUTFILE
 end
 # ----/
 # end of function

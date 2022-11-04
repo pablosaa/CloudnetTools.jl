@@ -1,7 +1,4 @@
 function kazr2nc(radar_file::String, output_path::String; extra_params=Dict{Symbol, Any}())
-
-    # Script to adapt ARM KAZR radar to netCDF input for cloudnetpy
-    # 
     # Reading input ARM netCDF file:
     
     if !isfile(radar_file)
@@ -9,6 +6,21 @@ function kazr2nc(radar_file::String, output_path::String; extra_params=Dict{Symb
     end 
 
     radar = ARMtools.getKAZRData(radar_file)
+
+    return kazr2nc(radar, output_path, extra_params=extra_params)
+end
+function kazr2nc(radar_file::Vector{String}, output_path::String; extra_params=Dict{Symbol, Any}())
+    # Reading input ARM netCDF file:
+    
+    radar = ARMtools.getKAZRData(radar_file)
+
+    return kazr2nc(radar, output_path, extra_params=extra_params)
+end
+
+function kazr2nc(radar::Dict, output_path::String; extra_params=Dict{Symbol, Any}())
+
+    # Script to adapt ARM KAZR radar to netCDF input for cloudnetpy
+    # 
 
     time = radar[:time];
     file_time = datetime24hours(time)
@@ -212,7 +224,7 @@ function kazr2nc(radar_file::String, output_path::String; extra_params=Dict{Symb
 
     close(ds)
 
-    return nothing
+    return ARM_OUTFILE
 end
 #----/
 #end of function

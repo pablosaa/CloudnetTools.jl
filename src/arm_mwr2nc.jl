@@ -1,6 +1,16 @@
 function mwr2nc(mwr_file::String, output_path::String; extra_params=Dict{Symbol, Any}())
-
     mwr = ARMtools.getMWRData(mwr_file)
+    
+    return mwr2nc(mwr::Dict, output_path; extra_params=extra_params)
+end
+function mwr2nc(mwr_file::Vector{String}, output_path::String; extra_params=Dict{Symbol, Any}())
+    mwr = ARMtools.getMWRData(mwr_file)
+    
+    return mwr2nc(mwr::Dict, output_path; extra_params=extra_params)
+end
+function mwr2nc(mwr::Dict, output_path::String; extra_params=Dict{Symbol, Any}())
+
+    #mwr = ARMtools.getMWRData(mwr_file)
 
     # Aux variables:
     #file_time = @. Second(mwr[:time] - DateTime(2001,1,1,0,0,0));
@@ -146,7 +156,8 @@ function mwr2nc(mwr_file::String, output_path::String; extra_params=Dict{Symbol,
     nclongitude[:] = get_parameter(mwr, :lon, extra_params, lims=(-180, 360));
     
     close(ds)
-    
+
+    return ARM_OUTFILE
 end
 
 

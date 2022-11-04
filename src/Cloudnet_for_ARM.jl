@@ -63,7 +63,29 @@ julia> result = converter(:radar, "/data/KAZR/armradar.20180121.nc", "/data/outp
     
     (c) Pablo Saavedra G.
 """
-function converter(the_key::Symbol, arm_filenc::String, out_path::String; extra_params=Dict())
+function converter(list_of_data::Dict, out_path::String; extra_params=Dict{Symbol, Any}())
+
+    list_of_func = Dict(
+        :radar => ARM.kazr2nc,
+        :lidar => ARM.hsrl2nc,
+        :radiometer => ARM.mwr2nc,
+        :model => ARM.model2nc,
+        :ceilometer => ARM.lidar2nc
+    );
+
+    output_files = String[]
+    foreach(list_of_data) do (the_key, arm_data)
+        ex = :($(list_of_func[the_key])($arm_data, $out_path, extra_params=$extra_params))
+        try
+            push!(output_file, eval(ex) )
+        catch e
+            @warn "$(the_key) cannot be converted! $(e)"
+        end
+        
+    end
+    return output_files
+end
+function converter(the_key::Symbol, arm_filenc::String, out_path::String; extra_params=Dict{Symbol, Any}())
     # Here the values of dictionary keys needs to be replaces by ARM data converter function:
     list_of_func = Dict(
         :radar => ARM.kazr2nc,
