@@ -77,7 +77,7 @@ function converter(list_of_data::Dict, out_path::String; extra_params=Dict{Symbo
     foreach(list_of_data) do (the_key, arm_data)
         ex = :($(list_of_func[the_key])($arm_data, $out_path, extra_params=$extra_params))
         try
-            push!(output_file, eval(ex) )
+            push!(output_files, eval(ex) )
         catch e
             @warn "$(the_key) cannot be converted! $(e)"
         end

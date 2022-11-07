@@ -122,7 +122,7 @@ function kazr2nc(radar::Dict, output_path::String; extra_params=Dict{Symbol, Any
         "units"                     => "dB",
         "long_name"                 => "Linear depolarisation ratio",
         "comment"                   => "This parameter is the ratio of cross-polar to co-polar reflectivity.",
-        "missing_value"             => NCDatasets.fillvalue(eltype(radar[:SNR])),
+        "missing_value"             => NCDatasets.fillvalue(eltype(radar[:LDR])),
 ))
 
     ncSNR = defVar(ds,"SNR", Float32, ("range", "time"), attrib = OrderedDict(

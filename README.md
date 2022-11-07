@@ -98,7 +98,7 @@ julia> CLNTprod = Dict(
         :der => true,
         :ier => true,
       )
-julia> ACTRIS.generate_product(categorize_files, CLNTprod)
+julia> ACTRIS.generate_products(categorize_files, CLNTprod)
 ```
 The last call will generate Cloudnet products and retrievals indicated as ```true``` in the dictionary of products ```CLNTprod```. The output files then are called after the product like ```20190119_nsa_classification.nc```, ```20190119_nsa_lwc.nc``` for cloud liquid water content, ```20190119_nsa_iwc.nc``` for ice water content, etc.
 
