@@ -10,7 +10,7 @@ yy = 2019
 mm = 11
 dd = 18
 
-output_path = "/tmp"
+output_path = "/tmp/cloudnet"
 extra_params = Dict{Symbol, Any}(:site=>"mosaic") #{Symbol, Any}()
 
 # RADIOSONDE input files:
@@ -650,10 +650,10 @@ ncspecific_liquid_atten = defVar(ds,"specific_liquid_atten", Float32, ("level", 
 # ncwwind[:] = ...
  ncfrequency[:] = [35f0] #...**
  ncgas_atten[:] = gas_atten #...**
- ncspecific_gas_atten[:] = 0 #...**
- ncspecific_saturated_gas_atten[:] = 0 #...**
- ncspecific_dry_gas_atten[:] = 0 #...**
- ncK2[:] = 0 #K2 #...**
- ncspecific_liquid_atten[:] = 0 #liq_atten #...**
+ ncspecific_gas_atten[:] = 0.001f0 #...**
+ ncspecific_saturated_gas_atten[:] = 0.0001f0 #...**
+ ncspecific_dry_gas_atten[:] = 0.0001f0 #...**
+ ncK2[:] = 0f0 #K2 #...**
+ ncspecific_liquid_atten[:] = 0f0 #liq_atten #...**
 
 close(ds)

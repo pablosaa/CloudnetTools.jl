@@ -51,12 +51,12 @@ function readIWCFile(nfile::String; modelreso=false)
     # Adding computed variables:
     # integration of iwc only for pixels with flag=1 or 2:
     # Cloudnetpy units iwc [kg m⁻³] and height [m]
-    var_output[:IWP] = let tmp = 1f3var_output[:iwc]
-
-        @. tmp[!(0 < var_output[:flag] < 3)] = NaN
-        # IWP [g m⁻²]
-        ∫fdh(tmp, var_output[:height])
-    end
+    ##var_output[:IWP] = let tmp = 1f3var_output[:iwc]
+    ##
+    ##    @. tmp[!(0 < var_output[:flag] < 3)] = NaN
+    ##    # IWP [g m⁻²]
+    ##    ∫fdh(tmp, var_output[:height])
+    ##end
     
     return var_output
 end

@@ -172,8 +172,6 @@ function ∫fdh(x::AbstractArray, H::AbstractVector; h₀=Real[], hₜ=Real[])
     δh[2:end] = diff(H)
     δh[1] =  δh[2:end] |> minimum
 
-    x[isnan.(x)] .= 0.0
-	
     # finding the limits for integration:
     i0 = isempty(h₀) ? 1 : [argmin(abs.(H .- z)) for z ∈ h₀]
     it = isempty(hₜ) ? nheight : [argmin(abs.(H .- z)) for z ∈ hₜ]
@@ -182,7 +180,13 @@ function ∫fdh(x::AbstractArray, H::AbstractVector; h₀=Real[], hₜ=Real[])
     𝐼₀ₜ = fill(NaN32, ntime)
     foreach(enumerate(eachcol(x))) do (i,X)
 	lims = i0[i]:it[i]
-	𝐼₀ₜ[i] = X[lims]'*vec(δh[lims])
+        tmp = isnan.(X[lims])
+	𝐼₀ₜ[i] = if all(tmp)
+            NaN32
+        else
+            X[lims[tmp]] .= 0
+            X[lims]'*vec(δh[lims])
+        end
     end
     return 𝐼₀ₜ
 end

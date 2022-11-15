@@ -104,7 +104,7 @@ Output:
 * plt::Plot output plot object.
 """
 function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=true,
-                        showatm=Dict(:wind=>true, :isoT=>true, :procas=>false), savefig=:none, extras=Dict())
+                        atmosplot=Dict(), showatm=Dict(:wind=>true, :isoT=>true, :procas=>false), savefig=:none, extras=Dict())
 
     # defining time axis ticks:
     tm_tick = cnt[:time][1]:Minute(120):cnt[:time][end];
@@ -129,17 +129,17 @@ function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=true,
     # Preparing to add graphs for isotherms and wind vectors:
     ihmax = findlast(1f-3cnt[:model_height] .≤ maxhgt)
 
+    atmos = isempty(atmosplot) ? cnt : atmosplot
+    Xin = haskey(atmos, :model_time) ? Vector(1:length(atmos[:model_time])) : round.(Int64, range(1, stop=length(atmos[:time]), length=25))
     
-    Xin = haskey(cnt, :model_time) ? Vector(1:length(cnt[:model_time])) : round.(Int64, range(1, stop=length(cnt[:time]), length=25))
-    
-    Yin = 1f-3cnt[:model_height]
+    Yin = 1f-3atmos[:model_height]
     #TLEV = [5, 0, -5, -10, -15, -20, -25, -30]
     BB = bbox(0,0,1,1)
 
     Nsubplt = 2
     if showatm[:isoT]
         # converting to Celcius in case Temperature is in K
-        Tin = let T = cnt[:T][1:ihmax, Xin]
+        Tin = let T = atmos[:T][1:ihmax, Xin]
             any(T .> 100) ? T .- 273.15 : T
         end
         
@@ -152,8 +152,8 @@ function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=true,
 
     if showatm[:wind]
         classplt = Attach_Windvector(classplt, Xin[1:2:end], Yin[2:4:ihmax],
-                                     cnt[:UWIND][2:4:ihmax, Xin[1:2:end]],
-                                     cnt[:VWIND][2:4:ihmax, Xin[1:2:end]],
+                                     atmos[:UWIND][2:4:ihmax, Xin[1:2:end]],
+                                     atmos[:VWIND][2:4:ihmax, Xin[1:2:end]],
                                      (1, BB), Nsubplt)
         Nsubplt += 1
     end
@@ -178,9 +178,9 @@ function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=true,
     return pltout
 end
 # -- OR
-function show_classific(cnt_file::String; SITENAME="", maxhgt=8, showlegend=true, savefig=:none)
+function show_classific(cnt_file::String; SITENAME="", maxhgt=8, atmosplot=Dict(), showlegend=true, savefig=:none)
     cnt = CloudnetTools.readCLNFile(cnt_file)
-    return show_classific(cnt, SITENAME=SITENAME, maxhgt=maxhgt, showlegend=showlegend,savefig=savefig)
+    return show_classific(cnt, SITENAME=SITENAME, maxhgt=maxhgt, atmosplot=atmosplot, showlegend=showlegend,savefig=savefig)
 end
 # ----/
 
@@ -220,17 +220,17 @@ function ShowLegendCloudNetClassification(LegendType::String)
     if LegendType == "classific"
         txt_labels = [
             #X, Y, "short_name", "long_name"
-            (40, 1,"Clear sky", "Clear sky"),
+            (41, 1,"Clear sky", "Clear sky"),
             (2, 1,"Liquid droplets", "Cloud liquid droplets only"), 
-            (20, 1,"Drizzle | rain", "Drizzle or rain"), 
-            (20, 2,"Drizzle & liquid droplets", "Drizzle or rain coexisting with cloud liquid droplets"),
+            (18, 1,"Drizzle | rain", "Drizzle or rain"), 
+            (18, 2,"Drizzle & liquid droplets", "Drizzle or rain coexisting with cloud liquid droplets"),
             (2, 3,"Ice", "Ice particles"), 
             (2, 2, "Ice & SCL", "Ice coexisting with supercooled liquid droplets"),
-            (20, 3,"Melting ice", "Melting ice particle"),
-            (20, 4,"Melting ice & liquid droples", "Melting ice particles coexisting with cloud liquid droplets"), 
-            (40, 2,"Aerosol", "Aerosol particles/no cloud or precipitation"), 
-            (40, 3,"Insects", "Insects/no cloud or precipitation"), 
-            (40, 4,"Aerosol & insects", "Aerosol coexisting with insects/no cloud or precipitation")
+            (18, 3,"Melting ice", "Melting ice particle"),
+            (18, 4,"Melting ice & liquid droples", "Melting ice particles coexisting with cloud liquid droplets"), 
+            (41, 2,"Aerosol", "Aerosol particles/no cloud or precipitation"), 
+            (41, 3,"Insects", "Insects/no cloud or precipitation"), 
+            (41, 4,"Aerosol & insects", "Aerosol coexisting with insects/no cloud or precipitation")
         ];
     elseif LegendType == "detection"
         txt_labels = [
@@ -323,7 +323,7 @@ function show_measurements(cln::Dict; atmosplot=Dict(), SITENAME::String="", max
 end
 # --- OR 
 function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=Dict(),
-        SITENAME::String="", maxhgt=8, savefig=false, cln=nothing)
+        SITENAME::String="", maxhgt=8, savefig=false, cln=nothing, extras=Dict())
 
     Y_LIM = (0, maxhgt)
     #X_LIM = extrema(radar[:time])
@@ -336,7 +336,7 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
                           ylim=Y_LIM, tick_dir=:out, ytickfontsize=11,
                           colorbar_title="Radar Reflectivity [dBz]", #titlefontsize=11,
                           ylabel="Height A.G.L. [km]", xticks=(tm_tick, ""),
-                          guidefontsize=15, ticksfontsize=13,
+                          guidefontsize=13, ticksfontsize=13,
                           bottom_margin=-1.5Plots.mm, framestyle=:box);
 
     # adding atmospheric information
@@ -377,7 +377,7 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
                           ylim=Y_LIM, tick_dir=:out, ytickfontsize=11, colorbar_width=1,
                           colorbar_title="Lidar Attenuated\nBackscattering coefficient log10 [sr⁻¹ m⁻¹]",
                           ylabel="Height A.G.L. [km]", xticks=(tm_tick, ""),
-                          guidefontsize=15, subplot=1, bottom_margin=-1.5Plots.mm,
+                          guidefontsize=13, subplot=1, bottom_margin=-1.5Plots.mm,
                           framestyle=:box);
     
     # adding atmospheric information
@@ -411,7 +411,7 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
                 yguidefont=font(:steelblue), ytickfontsize=11,
                 xticks = (tm_tick, !isnothing(cln) ? "" : Dates.format.(tm_tick, "H")),
                 xlim = extrema(mwr[:time]), inset=(1, BB), subplot=2,
-                tickfontsize=13, xguidefontsize=18, framestyle=:box, #font(15),
+                tickfontsize=13, xguidefontsize=15, framestyle=:box, #font(15),
                 xlabel = !isnothing(cln) ? "" : titletext, xrot=0);
     #ytickfontcolor=:steelblue,
 
@@ -438,9 +438,9 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
     ll = @layout [a0{0.38h}; a{0.38h}; b{0.12h}];
 
     Plots.plot(radarplt, lidarplt,  mwrplt, layout=ll,  link=:y,
-                        size=(1000,1000), yguidefontsize=19, ytickfontsize=12,
-                        left_margin =10Plots.mm, rigth_margin=10Plots.mm,
-                        bottom_margin=[-3 -3 50].*Plots.mm)
+                        size=(1000,1000), yguidefontsize=13, ytickfontsize=12,
+                        left_margin =10Plots.mm, rigth_margin=13Plots.mm,
+                        bottom_margin=[-3 -3 50].*Plots.mm; extras...)
     #                        title = titletext, titlefontsize=15,
     #                        legend=[false false false], 
     end
