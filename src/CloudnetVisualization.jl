@@ -121,7 +121,6 @@ function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=true,
     end #"TIME UTC [hour] from "*Dates.format(cnt[:time][2], "dd.u.yyyy")
 
     strtitle = (tm_tick[1], 7.5, text("Cloudnet Target Classification "*SITENAME, 11, halign=:left))
-    strtitle = !isempty(SITENAME) ? "Cloudnet Target Classification "*SITENAME : ""
     
     cldnet = CloudNetPalette("classific")
     l = grid(2,1, heights=(0.2,0.8)) #[a{0.25h}; b];
@@ -176,9 +175,9 @@ function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=true,
     end
     
     if showlegend
-        classleg = ShowLegendCloudNetClassification("classific")
+        classleg = ShowLegendCloudNetClassification("classific", SITENAME=SITENAME)
 
-        pltout = plot(classleg, classplt, layout=l, size=(800,700), title=strtitle)
+        pltout = plot(classleg, classplt, layout=l, size=(800,700))
     else
         pltout = plot(classplt, size=(800,600))
     end
@@ -226,7 +225,9 @@ function CloudNetPalette(ColorType::String)
     return cldnet
 end
 
-function ShowLegendCloudNetClassification(LegendType::String)
+function ShowLegendCloudNetClassification(LegendType::String; SITENAME::String="")
+
+    strtitle = !isempty(SITENAME) ? "Cloudnet Target Classification "*SITENAME : ""
     if LegendType == "classific"
         txt_labels = [
             #X, Y, "short_name", "long_name"
@@ -258,7 +259,7 @@ function ShowLegendCloudNetClassification(LegendType::String)
 
     scatter(map(x->(x[1], 1.5x[2]), txt_labels),
             marker=:square, grid=:false, markerstroke=:none,
-            framestyle=:none, widen=true,
+            framestyle=:none, widen=true, title=strtitle,
             markersize=8, markercolor=cldnet, legend=false, axis=false,
             clipping=:false, xlim=(-0.1, 60), ylim=(0, 8)); #1+maximum(txt_labels)[2]));
     
@@ -431,24 +432,24 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
     # Composite figure:
 
     finplt = if !isnothing(cln) && typeof(cln)<:Dict
-        ll = @layout [a0{0.3h}; a1{0.3h}; b{0.1h}; a2{0.9w} b1];
+        ll = @layout [a0{0.3h}; a1{0.3h}; b{0.1h} b1{0.1w}; a2{0.9w} b2];
         clnplt = show_classific(cln; SITENAME="", maxhgt=maxhgt, showlegend=false)
  
         Plots.plot(radarplt, lidarplt,  mwrplt, clnplt, layout=ll,  link=:y,
-                        size=(1000,1100), yguidefontsize=19, ytickfontsize=12,
+                        size=(1000,1100), yguidefontsize=13, ytickfontsize=12,
                         left_margin =10Plots.mm, rigth_margin=10Plots.mm,
                         bottom_margin=[-3 -3 -3 -3 50].*Plots.mm)
 
     elseif !isnothing(cln) && typeof(cln)<:Plots.Plot
-       ll = @layout [a0{0.3h}; a1{0.3h}; b{0.1h}; a2];
+       ll = @layout [a0{0.3h}; a1{0.3h}; b{0.1h} b1{0.1w}; a2];
  
         Plots.plot(radarplt, lidarplt,  mwrplt, cln, layout=ll,  link=:y,
-                        size=(1000,1100), yguidefontsize=19, ytickfontsize=12,
+                        size=(1000,1100), yguidefontsize=13, ytickfontsize=12,
                         left_margin =10Plots.mm, rigth_margin=10Plots.mm,
                         bottom_margin=[-3 -3 -3 -3 50].*Plots.mm)
  
     else
-    ll = @layout [a0{0.38h}; a{0.38h}; b{0.12h}];
+    ll = @layout [a0{0.38h}; a1{0.38h}; b{0.12h} b1{0.1w}];
 
     Plots.plot(radarplt, lidarplt,  mwrplt, layout=ll,  link=:y,
                         size=(1000,1000), yguidefontsize=13, ytickfontsize=12,
