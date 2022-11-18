@@ -108,8 +108,17 @@ function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=true,
 
     # defining time axis ticks:
     tm_tick = cnt[:time][1]:Minute(120):cnt[:time][end];
-
-    Xstrname = "TIME UTC [hour] from "*Dates.format(cnt[:time][2], "dd.u.yyyy")
+    tm_lims = (cnt[:time][1], cnt[:time][end])
+    
+    Xstrname = let tmp = Date.(tm_lims) |> unique
+        formatstr = if length(tmp)==1
+            @sprintf("Time UTC [hour] from %s", tmp[1])
+        else
+            @sprintf("Time UTC [hour] from %s to %s", tmp[1], tmp[2])
+        end
+        !isempty(SITENAME) && (formatstr *= ", "*SITENAME)
+        formatstr
+    end #"TIME UTC [hour] from "*Dates.format(cnt[:time][2], "dd.u.yyyy")
 
     strtitle = (tm_tick[1], 7.5, text("Cloudnet Target Classification "*SITENAME, 11, halign=:left))
     strtitle = !isempty(SITENAME) ? "Cloudnet Target Classification "*SITENAME : ""
@@ -124,13 +133,14 @@ function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=true,
                     ylabel="Height A.G.L. [km]", ytickfontsize=11, minorticks=true,
                     xlabel= Xstrname, tick_direction=:out, 
                     xticks=(tm_tick, Dates.format.(tm_tick, "H")), xrot=0,
-                    xtickfontsize=13, xguidefontsize=18, title=strtitle; extras...);  # xguidefont=font(12)
+                    xtickfontsize=13, xguidefontsize=18; extras...);  # xguidefont=font(12)
 
     # Preparing to add graphs for isotherms and wind vectors:
-    ihmax = findlast(1f-3cnt[:model_height] .≤ maxhgt)
 
     atmos = isempty(atmosplot) ? cnt : atmosplot
-    Xin = haskey(atmos, :model_time) ? Vector(1:length(atmos[:model_time])) : round.(Int64, range(1, stop=length(atmos[:time]), length=25))
+
+    ihmax = findlast(1f-3atmos[:model_height] .≤ maxhgt)
+    Xin = haskey(atmos, :model_time) ? Vector(1:length(atmos[:model_time])) : unique(round.(Int64, range(1, stop=length(atmos[:time]), length=25)))
     
     Yin = 1f-3atmos[:model_height]
     #TLEV = [5, 0, -5, -10, -15, -20, -25, -30]
@@ -168,7 +178,7 @@ function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=true,
     if showlegend
         classleg = ShowLegendCloudNetClassification("classific")
 
-        pltout = plot(classleg, classplt, layout=l, size=(800,700))
+        pltout = plot(classleg, classplt, layout=l, size=(800,700), title=strtitle)
     else
         pltout = plot(classplt, size=(800,600))
     end
@@ -303,7 +313,7 @@ end
 # ************************************************************
 # Functions to plot the data
 #
-function show_measurements(cln::Dict; atmosplot=Dict(), SITENAME::String="", maxhgt=8, savefig=:none, showclassific=false)
+function show_measurements(cln::Dict; atmosplot=Dict(), SITENAME::String="", maxhgt=8, savefig=:none, showclassific=false, extras=Dict())
     # converting to access the Cloudnet data:
     radar = Dict(K => cln[K] for K in [:time, :height, :Ze])
     lidar = Dict(K => cln[K] for K in [:time, :height, :β])
@@ -316,9 +326,9 @@ function show_measurements(cln::Dict; atmosplot=Dict(), SITENAME::String="", max
     #atmosplot && (rs[:model_height] *= 1f-3)  # converting to km
 
     if showclassific
-        return show_measurements(radar, lidar, mwr, atmosplot=rs, SITENAME=SITENAME, maxhgt=maxhgt, savefig=savefig, cln=cln)
+        return show_measurements(radar, lidar, mwr, atmosplot=rs, SITENAME=SITENAME, maxhgt=maxhgt, savefig=savefig, cln=cln, extras=extras)
     else
-        return show_measurements(radar, lidar, mwr, atmosplot=rs, SITENAME=SITENAME, maxhgt=maxhgt, savefig=savefig)
+        return show_measurements(radar, lidar, mwr, atmosplot=rs, SITENAME=SITENAME, maxhgt=maxhgt, savefig=savefig, extras=extras)
     end
 end
 # --- OR 
@@ -327,13 +337,15 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
 
     Y_LIM = (0, maxhgt)
     #X_LIM = extrema(radar[:time])
-    tm_tick = mwr[:time][1]:Minute(90):mwr[:time][end]
+    tm_tick = mwr[:time][1]:Minute(120):mwr[:time][end]
+    tm_lims = (minimum([mwr[:time][1], lidar[:time][1], radar[:time][1]]),
+               maximum([mwr[:time][end], lidar[:time][end], radar[:time][end]]))
     
     # For the Radar:
     BB = bbox(0,0,.89,1)
     radarplt = Plots.plot(radar[:time], 1f-3radar[:height], radar[:Ze],
                           st=:heatmap, color=palette(:lighttest,20), clim=(-30, 10),
-                          ylim=Y_LIM, tick_dir=:out, ytickfontsize=11,
+                          xlim=tm_lims, ylim=Y_LIM, tick_dir=:out, ytickfontsize=11,
                           colorbar_title="Radar Reflectivity [dBz]", #titlefontsize=11,
                           ylabel="Height A.G.L. [km]", xticks=(tm_tick, ""),
                           guidefontsize=13, ticksfontsize=13,
@@ -374,7 +386,7 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
     BB = bbox(0,0,.89,1)
     lidarplt = Plots.plot(lidar[:time], 1f-3lidar[:height], log10.(lidar[:β]),
                           st=:heatmap, color=:roma, clim=(-7, -4),
-                          ylim=Y_LIM, tick_dir=:out, ytickfontsize=11, colorbar_width=1,
+                          xlim=tm_lims, ylim=Y_LIM, tick_dir=:out, ytickfontsize=11, colorbar_width=1,
                           colorbar_title="Lidar Attenuated\nBackscattering coefficient log10 [sr⁻¹ m⁻¹]",
                           ylabel="Height A.G.L. [km]", xticks=(tm_tick, ""),
                           guidefontsize=13, subplot=1, bottom_margin=-1.5Plots.mm,
@@ -392,13 +404,14 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
     end
     
     # For Radiometer LWP
-    titletext = let tmp = extrema(radar[:time]) .|> Date |> unique
+    titletext = let tmp = Date.(tm_lims) |> unique
         formatstr = if length(tmp)==1
-            @sprintf("Time UTC [hour] from %s, %s", tmp[1], SITENAME)
+            @sprintf("Time UTC [hour] from %s", tmp[1])
         else
-            @sprintf("Time UTC [hour] from %s to %s, %s", tmp[1], tmp[2], SITENAME)
+            @sprintf("Time UTC [hour] from %s to %s", tmp[1], tmp[2])
         end
-        
+        !isempty(SITENAME) && (formatstr *= ", "*SITENAME)
+        formatstr
         #@sprintf(formatstr, (Dates.format.(tmp, "dd-uuu-yyyy")...), SITENAME);
     end
     
@@ -410,7 +423,7 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
                 label=false,  tick_dir=:out,
                 yguidefont=font(:steelblue), ytickfontsize=11,
                 xticks = (tm_tick, !isnothing(cln) ? "" : Dates.format.(tm_tick, "H")),
-                xlim = extrema(mwr[:time]), inset=(1, BB), subplot=2,
+                xlim = tm_lims, inset=(1, BB), subplot=2,
                 tickfontsize=13, xguidefontsize=15, framestyle=:box, #font(15),
                 xlabel = !isnothing(cln) ? "" : titletext, xrot=0);
     #ytickfontcolor=:steelblue,
