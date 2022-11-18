@@ -107,7 +107,7 @@ function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=true,
                         atmosplot=Dict(), showatm=Dict(:wind=>true, :isoT=>true, :procas=>false), savefig=:none, extras=Dict())
 
     # defining time axis ticks:
-    tm_tick = cnt[:time][1]:Minute(120):cnt[:time][end];
+    tm_tick = cnt[:time][1]:Minute(60):cnt[:time][end];
     tm_lims = (cnt[:time][1], cnt[:time][end])
     
     Xstrname = let tmp = Date.(tm_lims) |> unique
@@ -338,7 +338,7 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
 
     Y_LIM = (0, maxhgt)
     #X_LIM = extrema(radar[:time])
-    tm_tick = mwr[:time][1]:Minute(120):mwr[:time][end]
+    tm_tick = mwr[:time][1]:Minute(60):mwr[:time][end]
     tm_lims = (minimum([mwr[:time][1], lidar[:time][1], radar[:time][1]]),
                maximum([mwr[:time][end], lidar[:time][end], radar[:time][end]]))
     
