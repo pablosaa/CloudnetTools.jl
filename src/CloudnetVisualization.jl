@@ -107,7 +107,7 @@ function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=true,
                         atmosplot=Dict(), showatm=Dict(:wind=>true, :isoT=>true, :procas=>false), savefig=:none, extras=Dict())
 
     # defining time axis ticks:
-    tm_tick = cnt[:time][1]:Minute(60):cnt[:time][end];
+    tm_tick = cnt[:time][1]:Minute(120):cnt[:time][end];
     tm_lims = (cnt[:time][1], cnt[:time][end])
     
     Xstrname = let tmp = Date.(tm_lims) |> unique
@@ -261,7 +261,8 @@ function ShowLegendCloudNetClassification(LegendType::String; SITENAME::String="
             marker=:square, grid=:false, markerstroke=:none,
             framestyle=:none, widen=true, title=strtitle,
             markersize=8, markercolor=cldnet, legend=false, axis=false,
-            clipping=:false, xlim=(-0.1, 60), ylim=(0, 8)); #1+maximum(txt_labels)[2]));
+            clipping=:false, xlim=(-0.1, 60), ylim=(0, 8),
+            bottom_margin=-3Plots.mm);
     
     tmp = map(x->(x[1]+1.5, 1.5x[2], text(x[3], 11, :left)), txt_labels) |> annotate!;
 
@@ -338,7 +339,7 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
 
     Y_LIM = (0, maxhgt)
     #X_LIM = extrema(radar[:time])
-    tm_tick = mwr[:time][1]:Minute(60):mwr[:time][end]
+    tm_tick = mwr[:time][1]:Minute(120):mwr[:time][end]
     tm_lims = (minimum([mwr[:time][1], lidar[:time][1], radar[:time][1]]),
                maximum([mwr[:time][end], lidar[:time][end], radar[:time][end]]))
     
@@ -349,7 +350,7 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
                           xlim=tm_lims, ylim=Y_LIM, tick_dir=:out, ytickfontsize=11,
                           colorbar_title="Radar Reflectivity [dBz]", #titlefontsize=11,
                           ylabel="Height A.G.L. [km]", xticks=(tm_tick, ""),
-                          guidefontsize=13, ticksfontsize=13,
+                          guidefontsize=13, ticksfontsize=13, minorticks=true,
                           bottom_margin=-1.5Plots.mm, framestyle=:box);
 
     # adding atmospheric information
@@ -389,7 +390,7 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
                           st=:heatmap, color=:roma, clim=(-7, -4),
                           xlim=tm_lims, ylim=Y_LIM, tick_dir=:out, ytickfontsize=11, colorbar_width=1,
                           colorbar_title="Lidar Attenuated\nBackscattering coefficient log10 [sr⁻¹ m⁻¹]",
-                          ylabel="Height A.G.L. [km]", xticks=(tm_tick, ""),
+                          ylabel="Height A.G.L. [km]", xticks=(tm_tick, ""), minorticks=true,
                           guidefontsize=13, subplot=1, bottom_margin=-1.5Plots.mm,
                           framestyle=:box);
     
@@ -424,7 +425,7 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
                 label=false,  tick_dir=:out,
                 yguidefont=font(:steelblue), ytickfontsize=11,
                 xticks = (tm_tick, !isnothing(cln) ? "" : Dates.format.(tm_tick, "H")),
-                xlim = tm_lims, inset=(1, BB), subplot=2,
+                xlim = tm_lims, inset=(1, BB), subplot=2, minorticks=true,
                 tickfontsize=13, xguidefontsize=15, framestyle=:box, #font(15),
                 xlabel = !isnothing(cln) ? "" : titletext, xrot=0);
     #ytickfontcolor=:steelblue,
@@ -432,7 +433,7 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
     # Composite figure:
 
     finplt = if !isnothing(cln) && typeof(cln)<:Dict
-        ll = @layout [a0{0.3h}; a1{0.3h}; b{0.1h} b1{0.1w}; a2{0.9w} b2];
+        ll = @layout [a0{0.3h}; a1{0.3h}; [b{0.1h, 0.9w}; a2{0.9w}]];
         clnplt = show_classific(cln; SITENAME="", maxhgt=maxhgt, showlegend=false)
  
         Plots.plot(radarplt, lidarplt,  mwrplt, clnplt, layout=ll,  link=:y,
@@ -441,7 +442,7 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
                         bottom_margin=[-3 -3 -3 -3 50].*Plots.mm)
 
     elseif !isnothing(cln) && typeof(cln)<:Plots.Plot
-       ll = @layout [a0{0.3h}; a1{0.3h}; b{0.1h} b1{0.1w}; a2];
+       ll = @layout [a0{0.3h}; a1{0.3h}; [b{0.1h, 0.9w}; a2{0.9w}]];
  
         Plots.plot(radarplt, lidarplt,  mwrplt, cln, layout=ll,  link=:y,
                         size=(1000,1100), yguidefontsize=13, ytickfontsize=12,
@@ -449,7 +450,7 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
                         bottom_margin=[-3 -3 -3 -3 50].*Plots.mm)
  
     else
-    ll = @layout [a0{0.38h}; a1{0.38h}; b{0.12h} b1{0.1w}];
+    ll = @layout [a0{0.38h}; a1{0.38h}; b{0.9w}]; #{0.12h}
 
     Plots.plot(radarplt, lidarplt,  mwrplt, layout=ll,  link=:y,
                         size=(1000,1000), yguidefontsize=13, ytickfontsize=12,
