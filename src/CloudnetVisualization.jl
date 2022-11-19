@@ -262,7 +262,7 @@ function ShowLegendCloudNetClassification(LegendType::String; SITENAME::String="
             framestyle=:none, widen=true, title=strtitle,
             markersize=8, markercolor=cldnet, legend=false, axis=false,
             clipping=:false, xlim=(-0.1, 60), ylim=(0, 8),
-            bottom_margin=-5Plots.mm);
+            bottom_margin=-8Plots.mm);
     
     tmp = map(x->(x[1]+1.5, 1.5x[2], text(x[3], 11, :left)), txt_labels) |> annotate!;
 
@@ -313,7 +313,7 @@ end
 # ----/
 
 # ************************************************************
-# Functions to plot the data
+# Functions to plot the measurement data:
 #
 function show_measurements(cln::Dict; atmosplot=Dict(), SITENAME::String="", maxhgt=8, savefig=:none, showclassific=false, extras=Dict())
     # converting to access the Cloudnet data:
@@ -350,8 +350,8 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
                           xlim=tm_lims, ylim=Y_LIM, tick_dir=:out, ytickfontsize=11,
                           colorbar_title="Radar Reflectivity [dBz]", #titlefontsize=11,
                           ylabel="Height A.G.L. [km]", xticks=(tm_tick, ""),
-                          guidefontsize=13, ticksfontsize=13, minorticks=true,
-                          bottom_margin=-1.5Plots.mm, framestyle=:box);
+                          guidefontsize=13, ticksfontsize=13, minorticks=true)
+                          #bottom_margin=-1.5Plots.mm, framestyle=:box);
 
     # adding atmospheric information
     atmos=atmosplot
@@ -391,8 +391,7 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
                           xlim=tm_lims, ylim=Y_LIM, tick_dir=:out, ytickfontsize=11, colorbar_width=1,
                           colorbar_title="Lidar Backscattering log10 [sr⁻¹ m⁻¹]",
                           ylabel="Height A.G.L. [km]", xticks=(tm_tick, ""), minorticks=true,
-                          guidefontsize=13, subplot=1, bottom_margin=-1.5Plots.mm,
-                          framestyle=:box);
+                          guidefontsize=13, subplot=1) #, bottom_margin=-1.5Plots.mm, framestyle=:box);
     
     # adding atmospheric information
     if !isempty(atmosplot)
@@ -426,7 +425,7 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
                 yguidefont=font(:steelblue), ytickfontsize=11,
                 xticks = (tm_tick, !isnothing(cln) ? "" : Dates.format.(tm_tick, "H")),
                 xlim = tm_lims, inset=(1, BB), subplot=2, minorticks=true,
-                tickfontsize=13, xguidefontsize=15, framestyle=:box, #font(15),
+                tickfontsize=13, xguidefontsize=15, #framestyle=:box, #font(15),
                 xlabel = !isnothing(cln) ? "" : titletext, xrot=0);
     #ytickfontcolor=:steelblue,
 
