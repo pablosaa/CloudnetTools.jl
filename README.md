@@ -31,7 +31,7 @@ julia> ]
 julia> using ARMtools
 ```
 
-3. Finally intall CloudnetTools.jl same way as with ARMtools.jl :
+3. Finally intsall CloudnetTools.jl same way as with ARMtools.jl :
 ```julia
 julia> ]
 (@v1.8) pkg> add git@github.com:pablosaa/CloudnetTools.jl
@@ -120,11 +120,11 @@ julia> CloudnetTools.Vis.show_classific(clnet; SITENAME="NSA", maxhgt=7.5, savef
 
 The wind vectors and iso-therm lines can be excluded from the plot if the following optional argument is pass: ```showatm=Dict(:wind=>false, :isoT=>true, :procas=>false)```, where the wind vectors are skipped and only the iso-therms will be displayes.
 
-# Further estimations
-Besides the standard Cloudnet classification and retrievals, ```CloudnetTools.jl``` enables to estimate the cloud base and top height for multiple cloud layers
-(up to three layers for now) and their corresponding cloud base and top temperatures for the same layers.
+# Further retrievals
+Besides the standard Cloudnet classification and retrieval products, ```CloudnetTools.jl``` provides the possibility to estimate the cloud base and top height for multiply cloud layers
+(by default three layers) and their corresponding cloud base and top temperatures for these same layers.
 
-# Disclamer
+## Disclamer
 This package is independent to the development of ACTRIS' Cloudnetpy, and it is recomended to constantly update Cloudnetpy since this in not done by the Julia package. Moreover this package has been developed for application related to measuremnts in the Arctic, mainly for the ARM site in Utquiaǵvik and the MOSAiC expeditions. Thus the ARM data available for those sites have been tested and adapted for Cloudnet, it could happen that ARM data for other sites are different and that might produce errors, in that case we recomend to open an issue and we will correct or adapt to new data types.
 
 ### Acknowledges

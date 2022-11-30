@@ -299,6 +299,8 @@ WHERE:
 * clnet::Dict is the Cloudnet data from categorize and classification output files,
 * lidar::Dict (Optional) the lidar data with keys :time and :CBH [m]
 * nlayers (Optional) number of cloud layer to try to detect, default 3
+* alttime (Optional) a vector ::TimeDate to which the ouput will be fit, defualt none
+* smooth_classify (Optional) Bool to smooth the 2D CLASSIFICATION to avoid spikes.
 
 OUTPUT:
 * CBH::Matrix(ntime, nlayers) with cloud base height in m
@@ -307,7 +309,7 @@ OUTPUT:
 NOTE: be sure clnet[:height] and lidar[:CBH] have the same units, e.g. m
 
 """
-function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3)
+function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3, alttime=nothing, smooth_classify=false)
 
     # Defining constants:
     ntime = length(clnet[:time])
@@ -315,7 +317,11 @@ function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3)
     hydro_flags = (1:7)
 
     # Smoothing Cloudnet classification array to minimize noise:
-    CLASSIFY = round.(mapwindow(minimum, clnet[:CLASSIFY], (1,5)));
+    fmin(x) = filter(>(0), x) |> z-> isempty(z) ? 0 : maximum(z)
+    
+    CLASSIFY = let tmp=clnet[:CLASSIFY]
+        smooth_classify ? round.(mapwindow(minimum, clnet[:CLASSIFY], (1,5))) : tmp
+    end
     #CATEBITS = round.(imfilter(clnet[:CATEBITS], ker2d));
     
     # creating output arrays:
@@ -352,7 +358,23 @@ function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3)
         
     end
 
-    return CBH, CTH
+    if !isnothing(alttime) && typeof(alttime)<:Vector{DateTime}
+	ntime = length(alttime)
+	CBH_out = fill(NaN32, ntime, nlayers)
+	CTH_out = fill(NaN32, ntime, nlayers)
+	for (idxT, T) ∈ enumerate(alttime)
+	    δt, idxin = findmin(abs.(T .- clnet[:time]))
+	    δt > Minute(1) && continue
+	    CBH_out[idxT,:] = CBH[idxin, :]
+	    CTH_out[idxT,:] = CTH[idxin, :]
+	end
+	#idxin = [findmin(abs.(T .- clnet[:time])) |> x->x[] for T ∈ alttime]
+    else
+	CBH_out = CBH
+	CTH_out = CTH
+    end
+    
+    return CBH_out, CTH_out
 end
 # ----/
 
