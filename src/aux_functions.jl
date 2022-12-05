@@ -172,21 +172,24 @@ function ∫fdh(x::AbstractArray, H::AbstractVector; h₀=Real[], hₜ=Real[])
     δh[2:end] = diff(H)
     δh[1] =  δh[2:end] |> minimum
 
-    # finding the limits for integration:
-    i0 = isempty(h₀) ? 1 : [argmin(abs.(H .- z)) for z ∈ h₀]
-    it = isempty(hₜ) ? nheight : [argmin(abs.(H .- z)) for z ∈ hₜ]
-
     # integrating variable within limits:
     𝐼₀ₜ = fill(NaN32, ntime)
-    foreach(enumerate(eachcol(x))) do (i,X)
-	lims = i0[i]:it[i]
+    for (i, X) ∈ enumerate(eachcol(x))
+        # finding the limits for integration:
+        i0 = isempty(h₀) ? 1 : !isnan(h₀[i]) ? argmin(abs.(H .- h₀[i])) : nothing
+        it = isempty(hₜ) ? nheight : !isnan(hₜ[i]) ? argmin(abs.(H .- hₜ[i])) : nothing
+
+        isnothing(i0) && continue
+        isnothing(it) && continue
+
+	lims = i0:it
         tmp = isnan.(X[lims])
-	𝐼₀ₜ[i] = if all(tmp)
-            NaN32
-        else
-            X[lims[tmp]] .= 0
-            X[lims]'*vec(δh[lims])
-        end
+
+        all(tmp) && continue
+
+        X[lims[tmp]] .= 0
+	𝐼₀ₜ[i] = X[lims]'*vec(δh[lims]) 
+        
     end
     return 𝐼₀ₜ
 end
