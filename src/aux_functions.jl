@@ -354,7 +354,7 @@ function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3, alttime=no
             end
             isnothing(CB) && continue
             CT = findfirst(j->all(j .∉ hydro_flags), CLASSIFY[CB:end, k])
-            isnothing(CT) && continue
+            isnothing(CT) && break
             
             CT += CB - 1
             
