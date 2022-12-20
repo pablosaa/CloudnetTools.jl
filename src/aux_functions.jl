@@ -339,14 +339,14 @@ function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3, alttime=no
     
     # starting iteration over time dimension:
     foreach(1:ntime) do k
-        CT = 1
+        CT = i₀
 	
         # assigning true/false pixels corresponding to cloud_flags:
-        tmp = map(j->any(j .∈ cloud_flags), CLASSIFY[i₀, k]) .+ i₀ -1
+        tmp = map(j->any(j .∈ cloud_flags), CLASSIFY[:, k])
 
         for ih ∈ (1:nlayers)
             CB = if isnothing(lidar)
-                tmp[CT:end] |> findfirst
+                findfirst(tmp[CT:end]) + i₀ -1
             elseif isnan(CBH_lidar[k])
                 nothing
             else
@@ -354,7 +354,7 @@ function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3, alttime=no
             end
             isnothing(CB) && continue
             CT = findfirst(j->all(j .∉ hydro_flags), CLASSIFY[CB:end, k])
-            isnothing(CT) && break
+            isnothing(CT) && @error "Cloud base found without cloud top! $k"
             
             CT += CB - 1
             
