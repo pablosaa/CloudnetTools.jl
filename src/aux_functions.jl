@@ -313,7 +313,7 @@ OUTPUT:
 NOTE: be sure clnet[:height] and lidar[:CBH] have the same units, e.g. m
 
 """
-function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3, alttime=nothing, smooth_classify=false, cloud_flags = (1,3,5,7))
+function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3, alttime=nothing, smooth_classify=false, cloud_flags = (1,3,5,7), i₀=1)
 
     # Defining constants:
     ntime = length(clnet[:time])
@@ -342,7 +342,7 @@ function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3, alttime=no
         CT = 1
 	
         # assigning true/false pixels corresponding to cloud_flags:
-        tmp = map(j->any(j .∈ cloud_flags), CLASSIFY[:, k])
+        tmp = map(j->any(j .∈ cloud_flags), CLASSIFY[i₀, k]) .+ i₀ -1
 
         for ih ∈ (1:nlayers)
             CB = if isnothing(lidar)
