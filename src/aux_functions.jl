@@ -346,7 +346,7 @@ function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3, alttime=no
 
         for ih ∈ (1:nlayers)
             CB = if isnothing(lidar)
-                findfirst(tmp[CT:end]) + i₀ -1
+                findfirst(tmp[CT:end]) |> x->!isnothing(x) ? (x + i₀ -1) : x
             elseif isnan(CBH_lidar[k])
                 nothing
             else
