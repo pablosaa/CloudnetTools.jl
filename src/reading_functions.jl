@@ -30,7 +30,7 @@ function readIWCFile(nfile::String; modelreso=false)
 
         for inkey ∈ keys(vars_categorize)
             x = vars_categorize[inkey]
-            println(x)
+
             tmp = nc[x][:,:]
             if haskey(nc[x].attrib, "missing_value")
                 miss_val = nc[x].attrib["missing_value"]
@@ -89,7 +89,7 @@ function readLWCFile(nfile::String; modelreso=false)
 
         for inkey ∈ keys(vars_categorize)
             x = vars_categorize[inkey]
-            println(x)
+
             tmp = nc[x][:,:]
             if haskey(nc[x].attrib, "missing_value")
                 miss_val = nc[x].attrib["missing_value"]
@@ -303,6 +303,131 @@ function readCLNFile(nfile::String; modelreso=false, altfile=nothing)
     return var_output;
 
 end  # end of function
+# ----/
+
+# ***************************************************************
+# Read Cloudnet Ice and Liquid Effective radius files
+"""
+ Read Cloudnet Effective Radius for Ice and Water files
+The function reads 'infile' assuming it is a Der file and it assumes
+that the Ier file is in the same directory. Otherwise Ier file needs to
+be explicitly given as optional argument 'altfile=""' as follow:
+
+> reff = readReffFile(infile)
+> reff = readReffFile(infile; altfile="ier_file.nc")
+
+WHERE:
+infile::String Input file for Der or Ier cloudnet file
+altfile::String (Optional) if String given should be a Der file of Ier file
+
+For legacy Cloudnet files, the reff_Fischer and reff_ice files needs to be
+explicitly assigned to 'infile' and 'altfile', respectively.
+
+OUTPUT:
+reff::Dict Dictionary contaning the data collected from both files Der and Ier.
+"""
+function readReffFile(nfile::String; altfile::String="")
+
+    der_file, ier_file = if contains(nfile, "der") && isempty(altfile)
+        nfile, replace(nfile, "der"=>"ier")
+    elseif contains(nfile, "ier") && isempty(altfile)
+        replace(nfile, "ier"=>"der"), nfile
+    elseif isfile(nfile) && isfile(altfile) 
+        nfile, altfile
+    elseif isfile(nfile) && isempty(altfile)
+        nfile, nfile
+    else
+        @warn "Are you sure $nfile is a Der or Ier cloudnet file?"
+        
+    end
+    
+    @assert isfile(der_file) error("$(der_file) cannot be found!")
+
+
+    # Defining Output varaible:
+    var_output = Dict{Symbol, Any}()
+
+    # Reading first D_er data files:
+    NCDataset(der_file; format=:netcdf4_classic) do nc
+        var_output[:time] = convert_time2DateTime(nc)
+
+        isfmi = haskey(nc.attrib, "cloudnetpy_version")
+        !isfmi && @warn("It seems not a Der Cloudnetpy file! ...assuming legacy Cloudnet!")
+        
+        vars_cloudnet = Dict(
+            :height => "height",
+            :Dₑᵣ => isfmi ? "der_scaled" : "r_eff_Frisch_scaled",
+            :δDₑᵣ => isfmi ? "der_scaled_error" : "r_eff_Frisch_scaled_error",
+            :dₑᵣ => isfmi ? "der" : "r_eff_Frisch",
+            :δdₑᵣ => isfmi ? "der_error" : "r_eff_Frisch_error",
+            :Nₗ => "N_scaled",
+            :Dflag => isfmi ? "der_retrieval_status" : "retrieval_status"
+        )
+
+        for (inkey, x) ∈ vars_cloudnet
+            
+            !haskey(nc, x) && continue
+            
+            tmp = if eltype(nc[x]) <: Integer
+                nc[x][:,:]
+            else
+                nomissing(nc[x][:,:], NaN32)
+            end
+            
+            if haskey(nc[x].attrib, "missing_value")
+                miss_val = nc[x].attrib["missing_value"]
+            elseif haskey(nc[x].attrib, "_FillValue")
+                miss_val = nc[x].attrib["_FillValue"]
+            else
+                miss_val = 9.96921f36
+            end
+            
+            # Cleaning missing values from variables :
+            #eltype(tmp) <: Union{Missing, AbstractFloat} && (tmp[tmp .≈ miss_val] .= NaN32)
+            #eltype(tmp) <: AbstractFloat && (tmp[tmp .≈ miss_val] .= NaN32)
+            
+            var_output[inkey] = tmp
+        end
+
+    end
+
+    # For I_er data files:
+
+    @assert isfile(ier_file) @warn("$(ier_file) cannot be found!")
+    
+    # Reading for i_er data files:
+    NCDataset(ier_file; format=:netcdf4_classic) do nc
+
+        isfmi = haskey(nc.attrib, "cloudnetpy_version")
+
+        !isfmi && @warn("It seems not a Ier Cloudnetpy file! ...assuming legacy Cloudnet!")
+        
+        #var_output[:time] = convert_time2DateTime(nc)
+        vars_cloudnet = Dict(
+            :iₑᵣ  => isfmi ? "ier_inc_rain" : "reff_ice_inc_rain",
+            :Iₑᵣ  => isfmi ? "ier" : "reff_ice",
+            :δIₑᵣ => isfmi ? "ier_error" : "reff_ice_error",
+            :Iflag=> isfmi ? "ier_retrieval_status" : "reff_ice_retrieval_status",
+        )
+
+        for (inkey, x) ∈ vars_cloudnet
+
+            !haskey(nc, x) && continue
+            
+            tmp = if eltype(nc[x]) <: Integer
+                nc[x][:,:]
+            else
+                nomissing(nc[x][:,:], NaN32)
+            end
+            
+            var_output[inkey] = tmp
+        end
+
+    end
+
+    
+    return var_output
+end
 # ----/
 
 
