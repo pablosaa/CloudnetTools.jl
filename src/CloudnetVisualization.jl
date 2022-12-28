@@ -129,7 +129,7 @@ function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=true,
     classplt = plot(cnt[:time], 1f-3cnt[:height], cnt[:CLASSIFY],
                     st=:heatmap, colorbar = false, framestyle = :box,
                     color=palette(cldnet, 11), ylim=Y_LIM, clim=(0,10),
-                    ylabel="Height A.G.L. [km]", ytickfontsize=11, minorticks=true,
+                    ylabel="Height A.G.L. / km", ytickfontsize=11, minorticks=true,
                     xlabel= Xstrname, tick_direction=:out, 
                     xticks=(tm_tick, Dates.format.(tm_tick, "H")), xrot=0,
                     xtickfontsize=13, xguidefontsize=18; extras...);  # xguidefont=font(12)
@@ -344,12 +344,12 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
                maximum([mwr[:time][end], lidar[:time][end], radar[:time][end]]))
     
     # For the Radar:
-    BB = bbox(0,0,.89,1)
+    BB = bbox(0,0,0.88,1)  # 0.88 because it contains colorbar, otherwise 1
     radarplt = Plots.plot(radar[:time], 1f-3radar[:height], radar[:Ze],
                           st=:heatmap, color=palette(:lighttest,20), clim=(-30, 10),
                           xlim=tm_lims, ylim=Y_LIM, tick_dir=:out, ytickfontsize=11,
-                          colorbar_title="Radar Reflectivity [dBz]", #titlefontsize=11,
-                          ylabel="Height A.G.L. [km]", xticks=(tm_tick, ""),
+                          colorbar_title="\nRadar Reflectivity [dBz]", #titlefontsize=11,
+                          ylabel="Height A.G.L. /km", xticks=(tm_tick, ""),
                           guidefontsize=13, ticksfontsize=13, minorticks=true)
                           #bottom_margin=-1.5Plots.mm, framestyle=:box);
 
@@ -385,12 +385,12 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
     end
     
     # Plot for LIDAR
-    BB = bbox(0,0,.89,1)
+    BB = bbox(0,0,0.88,1)
     lidarplt = Plots.plot(lidar[:time], 1f-3lidar[:height], log10.(lidar[:β]),
                           st=:heatmap, color=:roma, clim=(-7, -4),
                           xlim=tm_lims, ylim=Y_LIM, tick_dir=:out, ytickfontsize=11, colorbar_width=1,
-                          colorbar_title="Lidar Backscattering log10 [sr⁻¹ m⁻¹]",
-                          ylabel="Height A.G.L. [km]", xticks=(tm_tick, ""), minorticks=true,
+                          colorbar_title="\nLidar Backscattering log10 [sr⁻¹ m⁻¹]",
+                          ylabel="Height A.G.L. / km", xticks=(tm_tick, ""), minorticks=true,
                           guidefontsize=13, subplot=1) #, bottom_margin=-1.5Plots.mm, framestyle=:box);
     
     # adding atmospheric information
@@ -420,7 +420,7 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
     
     Plots.plot!(mwrplt, mwr[:time], mwr[:LWP],
                 ylim=(0, max(200, maximum(mwr[:LWP]))),
-                ylabel="LWP [g m⁻²]", l=2,
+                ylabel="LWP / g m⁻²", l=2,
                 label=false,  tick_dir=:out,
                 yguidefont=font(:steelblue), ytickfontsize=11,
                 xticks = (tm_tick, !isnothing(cln) ? "" : Dates.format.(tm_tick, "H")),
@@ -432,31 +432,41 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
     # Composite figure:
 
     finplt = if !isnothing(cln) && typeof(cln)<:Dict
-        ll = @layout [a0{0.3h}; a1{0.3h}; [b{0.9w, 0.1h}; a2{0.9w}]];
+        ll = @layout [
+            a0{0.3h}
+            a1{0.3h}
+            [b{1.0w, 0.9h} _]
+            [a2{0.99h, 0.89w} _]
+        ]
+            #a0{0.3h}; a1{0.3h}; [b{0.1h}; a2{0.89w}]];
         clnplt = show_classific(cln; SITENAME="", maxhgt=maxhgt, showlegend=false)
  
         Plots.plot(radarplt, lidarplt,  mwrplt, clnplt, layout=ll,  link=:y,
                         size=(1000,1100), yguidefontsize=13, ytickfontsize=12,
-                        left_margin =10Plots.mm, rigth_margin=10Plots.mm,
-                        bottom_margin=[-3 -3 -3 30].*Plots.mm)
+                        left_margin =1.5Plots.mm, right_margins=:match,
+                        bottom_margin= -3Plots.mm) #[-3 -3 -3 30].*Plots.mm)
 
     elseif !isnothing(cln) && typeof(cln)<:Plots.Plot
        ll = @layout [a0{0.3h}; a1{0.3h}; [b{0.1h, 0.9w}; a2{0.9w}]];
  
         Plots.plot(radarplt, lidarplt,  mwrplt, cln, layout=ll,  link=:y,
                         size=(1000,1100), yguidefontsize=13, ytickfontsize=12,
-                        left_margin =10Plots.mm, rigth_margin=10Plots.mm,
+                        left_margin =10Plots.mm, right_margin=10Plots.mm,
                         bottom_margin=[-3 -3 -3 30].*Plots.mm)
  
     else
-    ll = @layout [a0{0.38h}; a1{0.38h}; b{0.9w}]; #{0.12h}
+        ll = @layout [
+            a0{0.4h}
+            a1{0.4h}
+            b{1.0w}
+        ]; #{0.12h}
 
-    Plots.plot(radarplt, lidarplt,  mwrplt, layout=ll,  link=:y,
-                        size=(1000,1000), yguidefontsize=13, ytickfontsize=12,
-                        left_margin =10Plots.mm, rigth_margin=13Plots.mm,
-                        bottom_margin=[-3 -3 30].*Plots.mm; extras...)
-    #                        title = titletext, titlefontsize=15,
-    #                        legend=[false false false], 
+        Plots.plot(radarplt, lidarplt,  mwrplt, layout=ll, # link=:y,
+                   size=(1000,1000), yguidefontsize=13, ytickfontsize=12,
+                   left_margin =1.5Plots.mm, right_margin=20Plots.mm,
+                   bottom_margin=-3Plots.mm) #; extras...)
+        #                        title = titletext, titlefontsize=15,
+        #                        legend=[false false false], 
     end
     savefig != :none && typeof(savefig)<:String && Plots.savefig(finplt, savefig)
     
