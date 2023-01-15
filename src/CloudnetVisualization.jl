@@ -439,7 +439,7 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
             [a2{0.99h, 0.89w} _]
         ]
             #a0{0.3h}; a1{0.3h}; [b{0.1h}; a2{0.89w}]];
-        clnplt = show_classific(cln; SITENAME="", maxhgt=maxhgt, showlegend=false)
+        clnplt = show_classific(cln; SITENAME="", maxhgt=maxhgt, showlegend=false, atmosplot=atmosplot)
  
         Plots.plot(radarplt, lidarplt,  mwrplt, clnplt, layout=ll,  link=:y,
                         size=(1000,1100), yguidefontsize=13, ytickfontsize=12,

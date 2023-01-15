@@ -315,12 +315,13 @@ OUTPUT:
 NOTE: be sure clnet[:height] and lidar[:CBH] have the same units, e.g. m
 
 """
-function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3, alttime=nothing, smooth_classify=false, cloud_flags = (1,3,5,7), i₀=1)
+function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3, alttime=nothing, smooth_classify=false, liquid_flags = false, i₀=1)
 
     # Defining constants:
     ntime = length(clnet[:time])
-    # cloud_flags = (1,3,5,7)
+    cloud_flags = (1,3,4,5,7)
     hydro_flags = (1:7)
+    liquid_flags = (1,3,5,7)
 
     # Smoothing Cloudnet classification array to minimize noise:
     fmin(x) = filter(>(0), x) |> z-> isempty(z) ? 0 : maximum(z)
@@ -333,7 +334,8 @@ function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3, alttime=no
     # creating output arrays:
     CBH = fill(NaN32, ntime, nlayers)
     CTH = fill(NaN32, ntime, nlayers)
-
+    CLB = fill(NaN32, ntime, nlayers)
+    
     # cheking if optional lidar data is provided:
     if !isnothing(lidar) && isa(lidar, Dict)
         CBH_lidar = Interpolate2Cloudnet(clnet, lidar[:time], lidar[:CBH])
@@ -345,7 +347,8 @@ function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3, alttime=no
 	
         # assigning true/false pixels corresponding to cloud_flags:
         tmp = map(j->any(j .∈ cloud_flags), CLASSIFY[:, k])
-
+        liq = map(j->any(j .∈ liquid_flags), CLASSIFY[:, k])
+        
         for ih ∈ (1:nlayers)
             CB = if isnothing(lidar)
                 findfirst(tmp[CT:end]) |> x->!isnothing(x) ? (x + i₀ -1) : x
@@ -355,6 +358,11 @@ function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3, alttime=no
                 abs.(clnet[:height] .- CBH_lidar[k]) |> argmin
             end
             isnothing(CB) && continue
+
+            # cloud liquid base:
+            CL = liq[CT:end] |> findfirst
+
+            # cloud top:
             CT = findfirst(j->all(j .∉ hydro_flags), CLASSIFY[CB:end, k])
             isnothing(CT) && (@warn "Cloud base found without cloud top! $k $(CB)"; break)
             
@@ -362,6 +370,7 @@ function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3, alttime=no
             
             CBH[k, ih] = clnet[:height][CB]
             CTH[k, ih] = clnet[:height][CT]
+            CLB[k, ih] = !isnothing(CL) ? clnet[:height][CL] : NaN32
         end
         
     end
@@ -370,16 +379,24 @@ function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3, alttime=no
 	ntime = length(alttime)
 	CBH_out = fill(NaN32, ntime, nlayers)
 	CTH_out = fill(NaN32, ntime, nlayers)
+        CLB_out = fill(NaN32, ntime, nlayers)
+        
 	for (idxT, T) ∈ enumerate(alttime)
 	    δt, idxin = findmin(abs.(T .- clnet[:time]))
 	    δt > Minute(1) && continue
 	    CBH_out[idxT,:] = CBH[idxin, :]
 	    CTH_out[idxT,:] = CTH[idxin, :]
+            CLB_out[idxT,:] = CLB[idxin, :]
 	end
 	#idxin = [findmin(abs.(T .- clnet[:time])) |> x->x[] for T ∈ alttime]
     else
 	CBH_out = CBH
 	CTH_out = CTH
+        CLB_out = CLB
+    end
+
+    if liquid_flag
+        return CBH_out, CTH_out, CLB_out
     end
     
     return CBH_out, CTH_out
