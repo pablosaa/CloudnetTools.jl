@@ -300,22 +300,25 @@ julia> CBH, CTH = estimate_cloud_layers(clnet::Dict)
 
 julia> CBH, CTH = estimate_cloud_layers(clnet::Dict; lidar=ceilometer, nlayers=2)
 
+julia> CBH, CTH, CLB = estimate_cloud_layers(clnet::Dict; nlayers=2, liquid_base=true)
+
 WHERE:
 * clnet::Dict is the Cloudnet data from categorize and classification output files,
 * lidar::Dict (Optional) the lidar data with keys :time and :CBH [m]
 * nlayers (Optional) number of cloud layer to try to detect, default 3
 * alttime (Optional) a vector ::TimeDate to which the ouput will be fit, defualt none
 * smooth_classify (Optional) Bool to smooth the 2D CLASSIFICATION to avoid spikes.
-* cloud_flags (Optional) which Cloudnet classification values to concider for cloud base, defaul (1,3,5,7) i.e. liquid 
+* liquid_base (Optional) if true then add extra output with liquid cloud base. 
 
 OUTPUT:
 * CBH::Matrix(ntime, nlayers) with cloud base height in m
 * CTH::Matrix(ntime, nlayers) with cloud top height in m
+* CLB::Matrix(ntime, nlayers) Optional if input flag 'liquid_base' is true.
 
 NOTE: be sure clnet[:height] and lidar[:CBH] have the same units, e.g. m
 
 """
-function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3, alttime=nothing, smooth_classify=false, liquid_flags = false, i₀=1)
+function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3, alttime=nothing, smooth_classify=false, liquid_base=false, i₀=1)
 
     # Defining constants:
     ntime = length(clnet[:time])
@@ -395,7 +398,7 @@ function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3, alttime=no
         CLB_out = CLB
     end
 
-    if liquid_flag
+    if liquid_base
         return CBH_out, CTH_out, CLB_out
     end
     
