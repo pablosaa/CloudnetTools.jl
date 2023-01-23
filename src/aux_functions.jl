@@ -318,7 +318,7 @@ OUTPUT:
 NOTE: be sure clnet[:height] and lidar[:CBH] have the same units, e.g. m
 
 """
-function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3, alttime=nothing, smooth_classify=false, liquid_base=false, i₀=1)
+function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3, alttime=nothing, smooth_classify=false, liquid_base=false)
 
     # Defining constants:
     ntime = length(clnet[:time])
@@ -346,7 +346,7 @@ function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3, alttime=no
     
     # starting iteration over time dimension:
     foreach(1:ntime) do k
-        CT = i₀
+        CT = 1
 	
         # assigning true/false pixels corresponding to cloud_flags:
         tmp = map(j->any(j .∈ cloud_flags), CLASSIFY[:, k])
@@ -354,16 +354,17 @@ function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3, alttime=no
         
         for ih ∈ (1:nlayers)
             CB = if isnothing(lidar)
-                findfirst(tmp[CT:end]) |> x->!isnothing(x) ? (x + i₀ -1) : x
+                findfirst(tmp[CT:end])
             elseif isnan(CBH_lidar[k])
                 nothing
             else
                 abs.(clnet[:height] .- CBH_lidar[k]) |> argmin
             end
             isnothing(CB) && continue
-
+            CB += CT-1
+            
             # cloud liquid base:
-            CL = liq[CT:end] |> findfirst
+            CL = liq[CB:end] |> findfirst
 
             # cloud top:
             CT = findfirst(j->all(j .∉ hydro_flags), CLASSIFY[CB:end, k])
@@ -373,7 +374,7 @@ function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3, alttime=no
             
             CBH[k, ih] = clnet[:height][CB]
             CTH[k, ih] = clnet[:height][CT]
-            CLB[k, ih] = !isnothing(CL) ? clnet[:height][CL] : NaN32
+            CLB[k, ih] = !isnothing(CL) ? clnet[:height][CL+CB-1] : NaN32
         end
         
     end
