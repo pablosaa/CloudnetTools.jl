@@ -183,14 +183,17 @@ function ∫fdh(x::AbstractArray, H::AbstractVector; h₀=Real[], hₜ=Real[])
         isnothing(it) && continue
 
 	lims = i0:it
-        tmp = X[lims] |> x-> ismissing.(x) .|| isnan.(x)
 
-        all(tmp) && continue
+        Xh = let Xh=X[lims] 
+            tmp = ismissing.(Xh) .|| isnan.(Xh)
+            all(tmp) && continue
+            Xh[tmp] .= 0
+            Xh
+        end
 
-        X[lims[tmp]] .= 0
-        X = (collect∘skipmissing)(X)
+        #X = (collect∘skipmissing)(X)
         
-	𝐼₀ₜ[i] = X[lims]'*vec(δh[lims]) 
+	𝐼₀ₜ[i] = Xh'*vec(δh[lims]) 
         
     end
     return 𝐼₀ₜ
