@@ -29,7 +29,8 @@ function kazr2nc(radar::Dict, output_path::String; extra_params=Dict{Symbol, Any
     arm_month = month(time[1])
     arm_day   = day(time[1])
 
-    LDR = haskey(radar, :LDR) ? radar[:LDR] : radar[:Zxpol] .- radar[:Ze] ;
+    # if LDR is not included in data file, usa proxy diff Zxpol-Zcpol:
+    !haskey(radar, :LDR) && (radar[:LDR] = radar[:Zxpol] .- radar[:Ze])
 
     # considering the global attribute radar_frequency has the form: 35.6 GHz
     # the value will be retrieved as a Vector with two elemens (35.6, "GHz")
@@ -206,7 +207,7 @@ function kazr2nc(radar::Dict, output_path::String; extra_params=Dict{Symbol, Any
     ncZe[:] = radar[:Ze];
     ncv[:] = radar[:MDV];
     ncwidth[:] = radar[:SPW];
-    ncldr[:] = LDR;
+    ncldr[:] = radar[:LDR];
     ncSNR[:] = radar[:SNR];
     nclatitude[:] = get_parameter(radar, :lat, extra_params, lims=(-90, 90))
     nclongitude[:] = get_parameter(radar, :lon, extra_params, lims=(-180, 360))
