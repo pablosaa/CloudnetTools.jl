@@ -6,30 +6,31 @@ using Dates
 using Printf
 
 #function rsonde2nc(data::Dict, output_path::String; extra_params=Dict{Symbol, Any}())
-yy = 2019
-mm = 11
-dd = 18
+yy = 2020
+mm = 04
+dd = 15
 
+const PATH_DATA = "/home/psgarfias/LIM/data/arctic-mosaic/";
 output_path = "/tmp/cloudnet"
 extra_params = Dict{Symbol, Any}(:site=>"mosaic") #{Symbol, Any}()
 
 # RADIOSONDE input files:
-##rs_file = "/home/psgarfias/LIM/data/arctic-mosaic/INTERPOLATEDSONDE/2019/mosinterpolatedsondeM1.c1.20191230.000030.nc";
-##data = ARMtools.getSondeData(rs_file, addvars=["lat", "lon", "alt"]);
+rs_file = ARMtools.getFilePattern(PATH_DATA, "INTERPOLATEDSONDE", yy,mm,dd); # /2019/mosinterpolatedsondeM1.c1.20191230.000030.nc";
+data = ARMtools.getSondeData(rs_file, addvars=["lat", "lon", "alt"]);
 ##
 ### getting latitude, longitude and altitude:
-##LAT, LON, ALT = let tmp=findfirst(>(-100), data[:LAT])
-##    if !isnothing(tmp) 
-##        data[:LAT][tmp], data[:LON][tmp], data[:ALT][tmp]
-##    else
-##        NaN32, NaN32, NaN32
-##    end
-##end
+LAT, LON, ALT = let tmp=findfirst(>(-100), data[:LAT])
+    if !isnothing(tmp) 
+        data[:LAT][tmp], data[:LON][tmp], data[:ALT][tmp]
+    else
+        NaN32, NaN32, NaN32
+    end
+end
 ##
 # TROPOS cloudnet categorization:
-rs_file = ARMtools.getFilePattern("/home/psgarfias/LIM/data/B07/arctic-mosaic/CloudNet/output", "TROPOS/processed/categorize", yy, mm, dd, fileext="categorize.nc");
+#rs_file = ARMtools.getFilePattern("/home/psgarfias/LIM/data/B07/arctic-mosaic/CloudNet/output", "TROPOS/processed/categorize", yy, mm, dd, fileext="categorize.nc");
 
-data = CloudnetTools.readCLNFile(rs_file);
+#data = CloudnetTools.readCLNFile(rs_file);
 
 idx_rstime = floor.(Int32, range(1, stop=length(data[:time]), length=25))
 idx_rslevel = let imax = findlast(<(20), data[:height])
@@ -42,20 +43,44 @@ Nlevel = length(idx_rslevel)
 Nfreq = 1
 
 # Meteorological variables:
-LAT, LON, ALT = data[:lat], data[:lon], data[:alt]
+# LAT, LON, ALT = data[:lat], data[:lon], data[:alt]
 HEIGHT = repeat(1f3data[:height][idx_rslevel], 1, length(idx_rstime) );
 LEVELS = (length(idx_rslevel):-1:1)
 Pa = data[:Pa][idx_rslevel, idx_rstime];  # 1f3* for radiosonde
 TK = data[:T][idx_rslevel, idx_rstime];# .+ 273.15;
-RH = ATMOStools.qv_to_rh(data[:QV], 1f-2data[:Pa], data[:T])[idx_rslevel, idx_rstime];#data[:RH][idx_rslevel, idx_rstime];
-U = data[:UWIND][idx_rslevel, idx_rstime];  # :U for radiosonde
-V = data[:VWIND][idx_rslevel, idx_rstime];  # :V for radiosonde
-QV = data[:QV][idx_rslevel, idx_rstime];   # :qv for radiosonde
-gas_atten = let tmp = data[:gas_atten][idx_rslevel, idx_rstime]
-    reshape(tmp, Nlevel, Ntime, Nfreq)
+
+U = try
+    data[:UWIND][idx_rslevel, idx_rstime];  # :U for radiosonde
+catch
+    data[:U][idx_rslevel, idx_rstime];
 end
-liq_atten = let tmp=data[:liq_atten][idx_rslevel, idx_rstime]
-    reshape(tmp, Nlevel, Ntime, Nfreq)
+V = try
+    data[:VWIND][idx_rslevel, idx_rstime];  # :V for radiosonde
+catch
+    data[:V][idx_rslevel, idx_rstime];
+end
+QV = try
+    data[:QV][idx_rslevel, idx_rstime];   # :qv for radiosonde
+catch
+    data[:qv][idx_rslevel, idx_rstime];
+end
+
+RH = ATMOStools.qv_to_rh(QV, 1f-2data[:Pa][idx_rslevel, idx_rstime], data[:T][idx_rslevel, idx_rstime]);#data[:RH][idx_rslevel, idx_rstime];
+
+gas_atten = if haskey(data, :gas_atten)
+    let tmp = data[:gas_atten][idx_rslevel, idx_rstime]
+        reshape(tmp, Nlevel, Ntime, Nfreq)
+    end
+else
+    fill(0f0, Nlevel, Ntime, Nfreq)
+end
+
+liq_atten = if haskey(data, :liq_atten)
+    let tmp=data[:liq_atten][idx_rslevel, idx_rstime]
+        reshape(tmp, Nlevel, Ntime, Nfreq)
+    end
+else
+    fill(0f0, Nlevel, Ntime, Nfreq)
 end
 
 K2 = fill(0.91, Nlevel, Ntime, Nfreq); #cat(, fill(0.91, Nlevel, Ntime), dims=3);

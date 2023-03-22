@@ -85,7 +85,7 @@ WHERE:
 
 """
 function datetime24hours(time_in::Vector{DateTime})
-    return hour.(time_in) + minute.(time_in)/60. + second.(time_in)/3600.0;
+    return 24(day.(time_in) .- day.(time_in[1])) .+ hour.(time_in) + minute.(time_in)/60. + second.(time_in)/3600.0;
 end
 # ----/
 

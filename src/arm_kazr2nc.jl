@@ -81,7 +81,7 @@ function kazr2nc(radar::Dict, output_path::String; extra_params=Dict{Symbol, Any
         "day"                       => Int16(arm_day),
         "location"                  => SITE,
         "history"                   => file_history,
-        "source"                    => join(radar[:instrumentmodel]),
+        "source"                    => haskey(radar, :instrumentmodel) ? join(radar[:instrumentmodel]) : "arm-radar",
         "references"                => doi,
     ))
 
