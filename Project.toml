@@ -5,6 +5,7 @@ version = "0.1.0"
 
 [deps]
 ARMtools = "04fa4220-f7a9-42e2-a909-1083f698c312"
+ATMOStools = "f4bd9c7d-eeda-4f89-9af3-b8c6f828feac"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
