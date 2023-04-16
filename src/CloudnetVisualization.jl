@@ -92,10 +92,10 @@ end
 """
 # Function to plot the Classification data
 
-> show_classific(cnt::Dict; 
+> show\_classific(cnt::Dict; 
 
 WHERE:
-* cnt::Dict dictionary ouput from read_CNTfile(cloudnet_file),
+* cnt::Dict dictionary ouput from read\_CNTfile(cloudnet\_file),
 * SITENANE::String (optional) string with name of site,
 * maxhgt::Number (optional) indicating the maximum height in km, default=8,
 * showlegend::Bool (optional) show Cloudnet legend colors, default=true
@@ -315,6 +315,34 @@ end
 # ************************************************************
 # Functions to plot the measurement data:
 #
+"""
+Function to plot the Radar, Lidar, and MWR for Cloudnet categorization:
+USAGE:
+> show\_measurements(cln)
+> show\_measurements(cln_file)
+> show\_measurements(radar, lidar, mwr)
+
+WHERE:
+* cln::Dict() Cloudnet categorization data from CloudnetTools.readCLNFile(),
+* cln_file::String Full path to the categorization file whos measurements to plot,
+* radar::Dict() Radar data to plot,
+* lidar::Dict() Lidar data to plot,
+* mwr::Dict Micorwave radiometer data to plot,
+
+OPTIONAL ARGUMENTS:
+* atmosplot::Dict(:model\_time, :model\_height, :T, :UWIND, :VWIND) to add meteo data to the plot, default Dict(),
+* SITENAME::String Measurement site to show in plot, default "",
+* maxhgt::Number Maximum height in km to show in height-time plot, default 8 km,
+* savefig::String Full path with file name to store the plot in PNG format, default :none,
+* showclassific::Bool Flag to include Cloudnet classificaiton on top of measurements, default false,
+* extras::Dict Dictionary with standard Plots.jl arguments to adjust the plot, dafault empty.
+
+"""
+function show_measurements(cln_file::String; atmosplot=Dict(), SITENAME::String="", maxhgt=8, savefig=:none, showclassific=false, extras=Dict())
+    cnt = CloudnetTools.readCLNFile(cnt_file)
+    return show_measurements(cln; atmosplot=atmosplot, SITENAME=SITENAME, maxhgt=maxhgt, savefig=savefig, showclassific=showflassific, extras=extras)
+end
+# --
 function show_measurements(cln::Dict; atmosplot=Dict(), SITENAME::String="", maxhgt=8, savefig=:none, showclassific=false, extras=Dict())
     # converting to access the Cloudnet data:
     radar = Dict(K => cln[K] for K in [:time, :height, :Ze])

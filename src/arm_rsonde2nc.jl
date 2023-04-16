@@ -1,22 +1,32 @@
-using NCDatasets, DataStructures
-using ARMtools
+#- using NCDatasets, DataStructures
+#- using ARMtools
 using ATMOStools
 using CloudnetTools
-using Dates
-using Printf
+#- using Dates
+#- using Printf
+
+
+function rsonde2nc(PATH_DATA::String, yy::Int, mm::Int, dd::Int; freq=35.5f0)
+    # RADIOSONDE input files:
+    rs_file = ARMtools.getFilePattern(PATH_DATA, "INTERPOLATEDSONDE", yy,mm,dd); # /2019/mosinterpolatedsondeM1.c1.20191230.000030.nc";
+    data = ARMtools.getSondeData(rs_file, addvars=["lat", "lon", "alt"]);
+    return rsonde2nc(data; freq=freq)
+end
+function rsonde2nc(data::Dict; freq=35.5f0)
+
 
 #function rsonde2nc(data::Dict, output_path::String; extra_params=Dict{Symbol, Any}())
-yy = 2020
-mm = 04
-dd = 15
+#yy = 2020
+#mm = 04
+#dd = 15
 
-const PATH_DATA = "/home/psgarfias/LIM/data/arctic-mosaic/";
+#- const PATH_DATA = "/home/psgarfias/LIM/data/arctic-mosaic/";
 output_path = "/tmp/cloudnet"
 extra_params = Dict{Symbol, Any}(:site=>"mosaic") #{Symbol, Any}()
 
 # RADIOSONDE input files:
-rs_file = ARMtools.getFilePattern(PATH_DATA, "INTERPOLATEDSONDE", yy,mm,dd); # /2019/mosinterpolatedsondeM1.c1.20191230.000030.nc";
-data = ARMtools.getSondeData(rs_file, addvars=["lat", "lon", "alt"]);
+#- rs_file = ARMtools.getFilePattern(PATH_DATA, "INTERPOLATEDSONDE", yy,mm,dd); # /2019/mosinterpolatedsondeM1.c1.20191230.000030.nc";
+#- data = ARMtools.getSondeData(rs_file, addvars=["lat", "lon", "alt"]);
 ##
 ### getting latitude, longitude and altitude:
 LAT, LON, ALT = let tmp=findfirst(>(-100), data[:LAT])
@@ -40,13 +50,13 @@ end;
 # dimentions:
 Ntime = length(idx_rstime)
 Nlevel = length(idx_rslevel)
-Nfreq = 1
+Nfreq = length(freq)
 
 # Meteorological variables:
 # LAT, LON, ALT = data[:lat], data[:lon], data[:alt]
 HEIGHT = repeat(1f3data[:height][idx_rslevel], 1, length(idx_rstime) );
 LEVELS = (length(idx_rslevel):-1:1)
-Pa = data[:Pa][idx_rslevel, idx_rstime];  # 1f3* for radiosonde
+Pa = 1f3data[:Pa][idx_rslevel, idx_rstime];  # 1f3* for radiosonde
 TK = data[:T][idx_rslevel, idx_rstime];# .+ 273.15;
 
 U = try
@@ -103,7 +113,7 @@ K2 = fill(0.91, Nlevel, Ntime, Nfreq); #cat(, fill(0.91, Nlevel, Ntime), dims=3)
     arm_title = CloudnetTools.get_parameter(data, :title, extra_params, default="")
 
     # generating UUID for the file:
-    file_uuid = "99503812" #string(uuid1());
+    file_uuid = string(uuid1());
 
     # generating file history:
     file_history = CloudnetTools.get_parameter(data, :history, extra_params,
@@ -673,7 +683,7 @@ ncspecific_liquid_atten = defVar(ds,"specific_liquid_atten", Float32, ("level", 
  ncsfc_height_amsl[:] = ALT #...
 # ncflx_height[:] = ...
 # ncwwind[:] = ...
- ncfrequency[:] = [35f0] #...**
+ ncfrequency[:] = 35.5f0 #...**
  ncgas_atten[:] = gas_atten #...**
  ncspecific_gas_atten[:] = 0.001f0 #...**
  ncspecific_saturated_gas_atten[:] = 0.0001f0 #...**
@@ -682,3 +692,6 @@ ncspecific_liquid_atten = defVar(ds,"specific_liquid_atten", Float32, ("level", 
  ncspecific_liquid_atten[:] = 0f0 #liq_atten #...**
 
 close(ds)
+
+end # end of function
+# ---/
