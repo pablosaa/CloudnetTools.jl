@@ -92,14 +92,20 @@ end
 """
 # Function to plot the Classification data
 
-> show\\_classific(cnt::Dict; 
+USAGE:
+
+julia> show\\_classific(cnt);
+
+julia> show\\_classific(cln_file); 
 
 WHERE:
 * cnt::Dict dictionary ouput from read\\_CNTfile(cloudnet\\_file),
+* cln_file::String Full paht of Cloudnet data from CloudnetTools.readCLNFile(cln\\_file),
 * SITENANE::String (optional) string with name of site,
 * maxhgt::Number (optional) indicating the maximum height in km, default=8,
 * showlegend::Bool (optional) show Cloudnet legend colors, default=true
 * showatm::Dict(:wind, :isoT, :procas) to add meteo data to the plot, "wind" & "iso-temp" or "Profile cascade of variable", default=(true, true, false)
+
 Output:
 * plt::Plot output plot object.
 """
@@ -317,10 +323,14 @@ end
 #
 """
 Function to plot the Radar, Lidar, and MWR for Cloudnet categorization:
+
 USAGE:
-> show\\_measurements(cln)
-> show\\_measurements(cln_file)
-> show\\_measurements(radar, lidar, mwr)
+
+julia> show\\_measurements(cln)
+
+julia> show\\_measurements(cln\\_file)
+
+julia> show\\_measurements(radar, lidar, mwr)
 
 WHERE:
 * cln::Dict() Cloudnet categorization data from CloudnetTools.readCLNFile(),
@@ -337,9 +347,11 @@ OPTIONAL ARGUMENTS:
 * showclassific::Bool Flag to include Cloudnet classificaiton on top of measurements, default false,
 * extras::Dict Dictionary with standard Plots.jl arguments to adjust the plot, dafault empty.
 
+Output:
+* plt::Plot output plot object.
 """
 function show_measurements(cln_file::String; atmosplot=Dict(), SITENAME::String="", maxhgt=8, savefig=:none, showclassific=false, extras=Dict())
-    cnt = CloudnetTools.readCLNFile(cnt_file)
+    cnt = CloudnetTools.readCLNFile(cln_file)
     return show_measurements(cln; atmosplot=atmosplot, SITENAME=SITENAME, maxhgt=maxhgt, savefig=savefig, showclassific=showflassific, extras=extras)
 end
 # --

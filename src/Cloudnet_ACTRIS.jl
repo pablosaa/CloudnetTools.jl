@@ -25,8 +25,12 @@ end
 # ***************************************************************
 """
 Function to generate the categorization file from cloudnetpy
-> using CloudnetTools.ACTRIS
-> uuid = ACTRIS.categorize\\_it(input_files, "/tmp/categorize.nc")
+
+USAGE:
+
+julia> using CloudnetTools.ACTRIS
+
+julia> uuid = ACTRIS.categorize\\_it(input_files, "/tmp/categorize.nc")
 
 INPUT:
 * input_files::Dict{
@@ -37,8 +41,8 @@ INPUT:
 * output_file::String with the file name of the output file.
 
 RETURN:
-If successful returns the UUID of the categorization file,
-if failed returns a warning message and nothing
+* If successful returns the UUID of the categorization file,
+* If failed returns a warning message and nothing
 
 """
 function categorize_it(data_files::Dict, categorize_file::String)
@@ -58,8 +62,10 @@ end
 # *****************************************************************
 """
 Function to generate cloudnetpy products i.e. iwc, lwc, der, ier, etc.
+
 USAGE:
-> uuid = ACTRIS.generate\\_products(PROD, categorize\\_file, output\\_file)
+
+julia> uuid = ACTRIS.generate\\_products(PROD, categorize\\_file, output\\_file)
 
 INPUTs:
 * PROD::Symbol with the key for the product to produce, e.g. :lwc,
@@ -68,7 +74,7 @@ INPUTs:
 
 OR alternatively the function can be used as:
 
-> uuid = ACTRIS.generate\\_products(products\\_files, cloudnet\\_products)
+julia> uuid = ACTRIS.generate\\_products(products\\_files, cloudnet\\_products)
 
 INPUTS: dictionaries containing informations as follow,
 * product_files::Dict(
@@ -84,7 +90,7 @@ INPUTS: dictionaries containing informations as follow,
     :drizzle => false)
 
 RETURNS:
-If successful the UUID of the lates product generated, otherwise type nothing
+* If successful the UUID of the lates product generated, otherwise type nothing
 
 """
 function generate_products(K::Symbol, fn_categ::String, output_file::String)

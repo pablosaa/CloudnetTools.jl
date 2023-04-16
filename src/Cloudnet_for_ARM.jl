@@ -31,7 +31,7 @@ To convert the file _armradar.20180121.nc_ into CloudNet input file:
 
 USAGE:
 
-> result = ARM.model2nc("/data/ECMWF/20180121\\_arm-nsa\\_ecmwf.nc", "/data/output")
+julia> result = ARM.model2nc("/data/ECMWF/20180121\\_arm-nsa\\_ecmwf.nc", "/data/output")
 
 NOTE:
 This function is still dummy. When ECMWF input file is provides, it only copies
