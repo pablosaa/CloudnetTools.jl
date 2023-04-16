@@ -26,14 +26,14 @@ end
 """
 Function to generate the categorization file from cloudnetpy
 > using CloudnetTools.ACTRIS
-> uuid = ACTRIS.categorize\_it(input_files, "/tmp/categorize.nc")
+> uuid = ACTRIS.categorize\\_it(input_files, "/tmp/categorize.nc")
 
 INPUT:
 * input_files::Dict{
-    :radar => "arm\_radar.nc",
-    :lidar => "arm\_lidar.nc",
-    :mwr   => "arm\_mwr.nc",
-    :model => "ecmwf\_model.nc"}
+    :radar => "arm\\_radar.nc",
+    :lidar => "arm\\_lidar.nc",
+    :mwr   => "arm\\_mwr.nc",
+    :model => "ecmwf\\_model.nc"}
 * output_file::String with the file name of the output file.
 
 RETURN:
@@ -59,23 +59,23 @@ end
 """
 Function to generate cloudnetpy products i.e. iwc, lwc, der, ier, etc.
 USAGE:
-> uuid = ACTRIS.generate\_products(PROD, categorize\_file, output\_file)
+> uuid = ACTRIS.generate\\_products(PROD, categorize\\_file, output\\_file)
 
 INPUTs:
 * PROD::Symbol with the key for the product to produce, e.g. :lwc,
-* categorize\_file::String full path to the categorize file created by cloudnetpy,
-* output\_file:Stirng full path and file name for the generated product
+* categorize\\_file::String full path to the categorize file created by cloudnetpy,
+* output\\_file:Stirng full path and file name for the generated product
 
 OR alternatively the function can be used as:
 
-> uuid = ACTRIS.generate\_products(products\_files, cloudnet\_products)
+> uuid = ACTRIS.generate\\_products(products\\_files, cloudnet\\_products)
 
 INPUTS: dictionaries containing informations as follow,
 * product_files::Dict(
-    :categorize => "/data/arm/input/arm\_categorize.nc",
-    :iwc => "/data/arm/cloud_product/arm\_iwc.nc",
-    :lwc => "/data/arm/cloud_product/arm\_lwc.nc",
-    :der => "/data/arm/effradius/arm\_der.nc")
+    :categorize => "/data/arm/input/arm\\_categorize.nc",
+    :iwc => "/data/arm/cloud_product/arm\\_iwc.nc",
+    :lwc => "/data/arm/cloud_product/arm\\_lwc.nc",
+    :der => "/data/arm/effradius/arm\\_der.nc")
 * cloudnet_products::Dict(
     :classification => false,
     :iwc => false,

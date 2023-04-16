@@ -92,10 +92,10 @@ end
 """
 # Function to plot the Classification data
 
-> show\_classific(cnt::Dict; 
+> show\\_classific(cnt::Dict; 
 
 WHERE:
-* cnt::Dict dictionary ouput from read\_CNTfile(cloudnet\_file),
+* cnt::Dict dictionary ouput from read\\_CNTfile(cloudnet\\_file),
 * SITENANE::String (optional) string with name of site,
 * maxhgt::Number (optional) indicating the maximum height in km, default=8,
 * showlegend::Bool (optional) show Cloudnet legend colors, default=true
@@ -318,9 +318,9 @@ end
 """
 Function to plot the Radar, Lidar, and MWR for Cloudnet categorization:
 USAGE:
-> show\_measurements(cln)
-> show\_measurements(cln_file)
-> show\_measurements(radar, lidar, mwr)
+> show\\_measurements(cln)
+> show\\_measurements(cln_file)
+> show\\_measurements(radar, lidar, mwr)
 
 WHERE:
 * cln::Dict() Cloudnet categorization data from CloudnetTools.readCLNFile(),
@@ -330,7 +330,7 @@ WHERE:
 * mwr::Dict Micorwave radiometer data to plot,
 
 OPTIONAL ARGUMENTS:
-* atmosplot::Dict(:model\_time, :model\_height, :T, :UWIND, :VWIND) to add meteo data to the plot, default Dict(),
+* atmosplot::Dict(:model\\_time, :model\\_height, :T, :UWIND, :VWIND) to add meteo data to the plot, default Dict(),
 * SITENAME::String Measurement site to show in plot, default "",
 * maxhgt::Number Maximum height in km to show in height-time plot, default 8 km,
 * savefig::String Full path with file name to store the plot in PNG format, default :none,
