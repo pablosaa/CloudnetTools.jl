@@ -352,7 +352,7 @@ Output:
 """
 function show_measurements(cln_file::String; atmosplot=Dict(), SITENAME::String="", maxhgt=8, savefig=:none, showclassific=false, extras=Dict())
     cnt = CloudnetTools.readCLNFile(cln_file)
-    return show_measurements(cln; atmosplot=atmosplot, SITENAME=SITENAME, maxhgt=maxhgt, savefig=savefig, showclassific=showflassific, extras=extras)
+    return show_measurements(cln; atmosplot=atmosplot, SITENAME=SITENAME, maxhgt=maxhgt, savefig=savefig, showclassific=showclassific, extras=extras)
 end
 # --
 function show_measurements(cln::Dict; atmosplot=Dict(), SITENAME::String="", maxhgt=8, savefig=:none, showclassific=false, extras=Dict())

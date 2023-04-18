@@ -202,6 +202,19 @@ function kazr2nc(radar::Dict, output_path::String; extra_params=Dict{Symbol, Any
     ))
 
 
+    if haskey(radar, :RR)
+        ncrainrate = defVar(ds,"rainfall_rate", Float32, ("time",), attrib = OrderedDict(
+            "units"                     => "m s-1",
+            "long_name"                 => "Rainfall rate",
+            "standard_name"             => "rainfall_rate",
+            "comment"                   => "Fill values denote rain with undefined intensity.",
+        ))
+
+        # filling rainrate_fall and converting from mm h⁻¹ to m s⁻¹:
+        ncrainrate[:] = radar[:RR]/3.6f6
+    end
+
+    
     # Define variables
 
     ncZe[:] = radar[:Ze];
