@@ -49,6 +49,10 @@ function readIWCFile(nfile::String; modelreso=false)
     end
 
     # Adding computed variables:
+    # integration of lwc only for pixels with flag=1, 2 or 3:
+    idxnan = findall(x->x ∉ [1,3], var_output[:flag])
+    var_output[:iwc][idxnan] .= NaN
+
     # integration of iwc only for pixels with flag=1 or 2:
     # Cloudnetpy units iwc [kg m⁻³] and height [m]
     ##var_output[:IWP] = let tmp = 1f3var_output[:iwc]
@@ -108,8 +112,8 @@ function readLWCFile(nfile::String; modelreso=false)
     end
 
     # Additional computation:
-    # integration of iwc only for pixels with flag=1 or 2:
-    @. var_output[:lwc][!(0 < var_output[:flag] < 3)] = NaN
+    # integration of lwc only for pixels with flag=1, 2 or 3:
+    @. var_output[:lwc][!(0 < var_output[:flag] < 4)] = NaN
     
     return var_output
 end

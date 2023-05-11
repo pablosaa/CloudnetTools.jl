@@ -371,7 +371,7 @@ function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3, alttime=no
 
             # cloud top:
             CT = findfirst(j->all(j .∉ hydro_flags), CLASSIFY[CB:end, k])
-            isnothing(CT) && (@warn "Cloud base found without cloud top! $k $(CB)"; break)
+            isnothing(CT) && (@warn "Cloud base found without cloud top at layer $(ih)! $k $(CB)"; break)
             
             CT += CB - 1
             
