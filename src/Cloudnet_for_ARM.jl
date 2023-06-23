@@ -63,7 +63,7 @@ function get_instrument_type(ns::NCDataset; default_type=nothing)
     type = if !isempty(tmp)
         tmp[1]
     else
-        @warm "Instrument type not found! return default $(default_type)"
+        @warn "Instrument type not found! return default $(default_type)"
         default_type
     end
     return type
@@ -105,7 +105,7 @@ function converter(the_key::Symbol, arm_filenc::String, out_path::String; extra_
         elseif tmp=="ceil10m"
             ARM.lidar2nc
         else
-            @warm "Type of lidar is neither CEIL10m nor HSRL! using default as CEIL10m. Output file can be compromised!"
+            @warn "Type of lidar is neither CEIL10m nor HSRL! using default as CEIL10m. Output file can be compromised!"
             ARM.lidar2nc
         end
     end
