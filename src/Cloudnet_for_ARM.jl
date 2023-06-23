@@ -51,6 +51,31 @@ function model2nc(infile::String, output_path::String)
 end
 # ----/
 
+# *****************************************************************
+"""
+Function to obtain the instrument type from netcdf attributes:
+"""
+function get_instrument_type(ns::NCDataset; default_type=nothing)
+    list_attrib = ("platform_id", "datastream")
+
+    tmp = [ns.attrib[var] for var ∈ list_attrib if haskey(ns.attrib)]
+        
+    type = if !isempty(tmp)
+        tmp[1]
+    else
+        @warm "Instrument type not found! return default $(default_type)"
+        default_type
+    end
+    return type
+end
+function get_instrument_type(fn::String; default_type=nothing)
+    
+    type = NCDataset(fn) do ns
+        get_instrument_type(ns; default_type=default_type)
+    end
+    return type
+end
+
 
 # *****************************************************************
 """
@@ -58,12 +83,55 @@ Function to invoque the respective ARM data converter function:
 To convert the file _armradar.20180121.nc_ into CloudNet input file:
 
 USAGE:
+julia> result = converter(keys, input_file, output_dir)
 
+WHERE:
+* keys::Symbol - Indicator of instrument type, it can be one of (:radar, :lidar, :mwr, :ceilometer),
+* input_file::String - full path to ARM input file to convert,
+* output_dir::String - path to the ouptut directory to place the output files,
+* extra_params::Dict{Symbol, Any} - Dictionary of extra arguments for the convertion functions.
+
+EXAMPLE:
 julia> result = converter(:radar, "/data/KAZR/armradar.20180121.nc", "/data/output")
 
     
     (c) Pablo Saavedra G.
 """
+function converter(the_key::Symbol, arm_filenc::String, out_path::String; extra_params=Dict{Symbol, Any}())
+
+    func_for_lidar = let tmp=get_instrument_type(arm_filenc)
+        if tmp=="hsrl"
+            ARM.hsrl2nc
+        elseif tmp=="ceil10m"
+            ARM.lidar2nc
+        else
+            @warm "Type of lidar is neither CEIL10m nor HSRL! using default as CEIL10m. Output file can be compromised!"
+            ARM.lidar2nc
+        end
+    end
+    
+    # Here the values of dictionary keys needs to be replaces by ARM data converter function:
+    list_of_func = Dict(
+        :radar => ARM.kazr2nc,
+        :lidar => func_for_lidar,
+        :radiometer => ARM.mwr2nc,
+        :model => ARM.model2nc,
+        :ceilometer => ARM.lidar2nc
+    );
+
+    !isdir(out_path) && mkpath(out_path);
+
+    ex = :($(list_of_func[the_key])($arm_filenc, $out_path, extra_params=$extra_params))
+    try
+        return eval(ex)
+        
+    catch e
+        @warn "$(the_key) cannot be converted! $(e)"
+        return nothing
+    end
+end
+
+# -- OR --:
 function converter(list_of_data::Dict, out_path::String; extra_params=Dict{Symbol, Any}())
 
     list_of_func = Dict(
@@ -76,32 +144,15 @@ function converter(list_of_data::Dict, out_path::String; extra_params=Dict{Symbo
 
     output_files = String[]
     foreach(list_of_data) do (the_key, arm_data)
-        ex = :($(list_of_func[the_key])($arm_data, $out_path, extra_params=$extra_params))
-        try
-            push!(output_files, eval(ex) )
-        catch e
-            @warn "$(the_key) cannot be converted! $(e)"
-        end
-        
+        output_ex = converter(the_key, arm_data, out_path, extra_params=extra_params)
+        #ex = :($(list_of_func[the_key])($arm_data, $out_path, extra_params=$extra_params))
+        isnothing(output_ex) && @warn "$(the_key) cannot be converted! $(e). Return Nothing instead."
+        push!(output_files, ouptut_ex )
     end
+    
     return output_files
 end
-function converter(the_key::Symbol, arm_filenc::String, out_path::String; extra_params=Dict{Symbol, Any}())
-    # Here the values of dictionary keys needs to be replaces by ARM data converter function:
-    list_of_func = Dict(
-        :radar => ARM.kazr2nc,
-        :lidar => ARM.hsrl2nc,
-        :radiometer => ARM.mwr2nc,
-        :model => ARM.model2nc,
-        :ceilometer => ARM.lidar2nc
-    );
 
-    !isdir(out_path) && mkpath(out_path);
-
-    ex = :($(list_of_func[the_key])($arm_filenc, $out_path, extra_params=$extra_params))
-
-    return eval(ex)
-end
 # -- OR --:
 function converter(yy, mm, dd, thekey::Symbol, input_params::Dict; owndir=true)
 

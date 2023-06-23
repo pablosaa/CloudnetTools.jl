@@ -150,6 +150,7 @@ function hsrl2nc(lidar_file::String, output_path::String; extra_params=Dict())
     
     # Interpolate the time dimension (also change length of file_time):
     _, β_raw = interpolate_15s(file_time, beta)
+    _, δ15s = interpolate_15s(file_time, δ)
     file_time, β = interpolate_15s(file_time, β_att)
 
     # Calculate the smoothed backscattering:
@@ -257,7 +258,7 @@ function hsrl2nc(lidar_file::String, output_path::String; extra_params=Dict())
     ncbeta_raw[:] = β_raw;
     ncbeta[:] = β;
     ncbeta_smooth[:] = β_smooth;
-    ncdepol[:] = δ;
+    ncdepol[:] = δ15s;
     ncrange[:] = range;
     nctime[:] = file_time;
     nctilt_angle[:] = first(tilt_angle);

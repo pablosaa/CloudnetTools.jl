@@ -1,6 +1,6 @@
 # Part of CloudnetTools.jl
 # ******************************************************************
-# +++++++++++++++ MODULE Vis  for visulaization ++++++++++++++++++++
+# +++++++++++++++ MODULE Vis  for visualization ++++++++++++++++++++
 # ******************************************************************
 
 module Vis
@@ -9,6 +9,17 @@ using Plots
 using Dates
 using Printf
 
+"""
+Funtion to show LWC and IWC cloudnet product.
+USAGE:
+> show_LWC_IWC(lwc, iwc)
+> show_LWC_IWC(lwc, iwc; )
+
+WHERE:
+* lwc::Dict{Symbol, Any} the cloudnet product for liquid water content,
+* iwc::Dict{Symbol, Any} the cloudnet product for ice water content,
+
+"""
 function show_LWC_IWC(LWC::Dict, IWC::Dict; SITENAME="", mxhgt=10, twoplots=false, showisoT=true, savefig=:none, cnt::Dict, extras=Dict())
     
     # defining parameters for LWC:
@@ -389,7 +400,7 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
                           st=:heatmap, color=palette(:lighttest,20), clim=(-30, 10),
                           xlim=tm_lims, ylim=Y_LIM, tick_dir=:out, ytickfontsize=11,
                           colorbar_title="\nRadar Reflectivity [dBz]", #titlefontsize=11,
-                          ylabel="Height A.G.L. /km", xticks=(tm_tick, ""),
+                          ylabel="Height A.G.L. / km", xticks=(tm_tick, ""),
                           guidefontsize=13, ticksfontsize=13, minorticks=true)
                           #bottom_margin=-1.5Plots.mm, framestyle=:box);
 
