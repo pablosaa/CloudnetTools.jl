@@ -5,95 +5,154 @@ using CloudnetTools
 #- using Dates
 #- using Printf
 
+"""
+Function to convert the ARM radiosonde data to Cloudnet input file.
+USAGE:
+```julia-repl
+julia> output_file = ARM.rsonde2nc(rs_file, output_path)
+julia> output_file = ARM.rsonde2nc(rs_file, output_path; extra_params=extra_params)
+julia> output_file = ARM.rsonde2nc(rs, output_path)
+julia> output_file = ARM.rsonde2nc(data_path, YY, MM, DD, output_path)
+```
+WHERE:
+```julia-repl
+* rs_file::String Full path to ARM file to be converted,
+* output_path::String Path to store the converted file,
+* extra_params::Dict{Symbol, Any} Extra parameters passed as dictionary :key=>value pairs,
+* rs::Dict{Symbol, Any} dictionary containing radiosonde data, see ARMtools.getSondeData()
+* data_path::String Base path where to look for radiosonde data, by default looks at /data_path/INTERPOLATEDSONDE/YY/
+* YY::Int, MM::Int, DD::Int year, month, and day to look data file,
+```
+OPTIONAL PARAMETERS:
+Extra parameters can be passed to the function by using the extra\\_params optional variable:
+```julia-repl
+*  extra_params = Dict{Symbol, Any}(:site=>"mosaic", :freq=>35.5f0, :lat=>83.5, :lon=>101.0)
+*  extra_params = Dict{Symbol, Any}(:product_name=>"MERGEDSONDE")
+```
+For the latest case, extra\\_params passes the key :product\\_name which will change the directory
+where the function look for ARM radiosonde data, e.g. /data_path/MERGEDSONDE/YY
 
-function rsonde2nc(PATH_DATA::String, yy::Int, mm::Int, dd::Int; freq=35.5f0)
-    # RADIOSONDE input files:
-    rs_file = ARMtools.getFilePattern(PATH_DATA, "INTERPOLATEDSONDE", yy,mm,dd); # /2019/mosinterpolatedsondeM1.c1.20191230.000030.nc";
+EXAMPLE:
+```julia-repl
+julia> ARM.rsonde2nc("/data/nsa/nsainterpolatedsondeC1.c1.20190101.000030.nc", "/cloudnet/inputs")
+# To look for radiosonde data product MERGEDSONDE files for the year 2019, january 1st, then convert it:
+julia> ARM.rsonde2nc("/data/nsa", 2019, 1, 1, "/cloudnet/inputs", extra_params=Dict{Symbol, Any}(:MERGEDSONDE) )
+# To read first ARM radiosonde data with the ARMtools package, then convert it to Cloudnet input file:
+julia> rs = ARMtools.getSondeData("/data/nsa/nsainterpolatedsondeC1.c1.20190101.000030.nc");
+julia> ARM.rsonde2nc(rs, "/cloudnet/inputs", extra_params = Dict{Symbol, Any}(:site=>"mosaic") )
+```
+
+NOTE:
+By default the radar attenuation coefficient is assumed Ka-band (35.5 GHz),
+however this will be filled by zero since it is not yet supported.
+
+    (c) Pablo Saavedra Garfias
+"""
+function rsonde2nc(rs_file::String, output_path::String; extra_params=Dict{Symbol, Any}() )
     data = ARMtools.getSondeData(rs_file, addvars=["lat", "lon", "alt"]);
-    return rsonde2nc(data; freq=freq)
+    return rsonde2nc(data, output_path; extra_params=extra_params)
 end
-function rsonde2nc(data::Dict; freq=35.5f0)
+# -- OR --
+function rsonde2nc(PATH_DATA::String, yy::Int, mm::Int, dd::Int, output_path::String; freq=35.5f0, extra_params=Dict{Symbol, Any}() )
+    # RADIOSONDE input files:
+    product_name = haskey(extra_params, :product_name) ? extra_params[:product_name] : "INTERPOLATEDSONDE"
+    rs_file = ARMtools.getFilePattern(PATH_DATA, product_name, yy,mm,dd); # /2019/mosinterpolatedsondeM1.c1.20191230.000030.nc";
+    isnothing(rs_file) && @error "No radiosonde file could be found under $(PATH_DATA) and $(product_name)"
+
+    return rsonde2nc(rs_file, output_path; extra_params=extra_params)
+end
+# -- OR --
+function rsonde2nc(data::Dict, output_path::String; extra_params=Dict{Symbol, Any}() )
 
 
-#function rsonde2nc(data::Dict, output_path::String; extra_params=Dict{Symbol, Any}())
-#yy = 2020
-#mm = 04
-#dd = 15
+    # Checking default values:
+    freq = haskey(extra_params, :freq) ? extra_params[:freq] : 35.5f0
+    δtime = haskey(extra_params, :δtime) ? extra_params[:δtime] : Hour(1)
+    δheight = haskey(extra_params, :δheight) ? extra_params[:δheight] : 30
+    
+    # RADIOSONDE input files:
+    #- rs_file = ARMtools.getFilePattern(PATH_DATA, "INTERPOLATEDSONDE", yy,mm,dd); # /2019/mosinterpolatedsondeM1.c1.20191230.000030.nc";
+    #- data = ARMtools.getSondeData(rs_file, addvars=["lat", "lon", "alt"]);
+    ##
+    ### getting latitude, longitude and altitude:
+    LAT, LON, ALT = let tmp=findfirst(>(-100), data[:LAT])
+        if !isnothing(tmp) 
+            data[:LAT][tmp], data[:LON][tmp], data[:ALT][tmp]
+        else
+            NaN32, NaN32, NaN32
+        end
+    end
+    ##
+    # TROPOS cloudnet categorization:
+    #rs_file = ARMtools.getFilePattern("/home/psgarfias/LIM/data/B07/arctic-mosaic/CloudNet/output", "TROPOS/processed/categorize", yy, mm, dd, fileext="categorize.nc");
 
-#- const PATH_DATA = "/home/psgarfias/LIM/data/arctic-mosaic/";
-output_path = "/tmp/cloudnet"
-extra_params = Dict{Symbol, Any}(:site=>"mosaic") #{Symbol, Any}()
+    #data = CloudnetTools.readCLNFile(rs_file);
+    
+    idx_rstime = floor.(Int32, range(1, stop=length(data[:time]), length=24))
+    idx_rslevel = let imax = findlast(<(20), data[:height])
+        floor.(Int32, range(1, stop=imax, length=137))
+    end;
 
-# RADIOSONDE input files:
-#- rs_file = ARMtools.getFilePattern(PATH_DATA, "INTERPOLATEDSONDE", yy,mm,dd); # /2019/mosinterpolatedsondeM1.c1.20191230.000030.nc";
-#- data = ARMtools.getSondeData(rs_file, addvars=["lat", "lon", "alt"]);
-##
-### getting latitude, longitude and altitude:
-LAT, LON, ALT = let tmp=findfirst(>(-100), data[:LAT])
-    if !isnothing(tmp) 
-        data[:LAT][tmp], data[:LON][tmp], data[:ALT][tmp]
+    # dimentions:
+    Ntime = length(idx_rstime)
+    Nlevel = length(idx_rslevel)
+    Nfreq = length(freq)
+
+    # Meteorological variables:
+    # LAT, LON, ALT = data[:lat], data[:lon], data[:alt]
+    HEIGHT = repeat(1f3data[:height][idx_rslevel], 1, length(idx_rstime) );
+
+    LEVELS = (length(idx_rslevel):-1:1)
+
+    Pa = 1f3data[:Pa][idx_rslevel, idx_rstime];  # 1f3* for radiosonde
+
+    TK = data[:T][idx_rslevel, idx_rstime];# .+ 273.15;
+
+    U = try
+        data[:UWIND][idx_rslevel, idx_rstime];  # :U for radiosonde
+    catch
+        data[:U][idx_rslevel, idx_rstime];
+    end
+
+    V = try
+        data[:VWIND][idx_rslevel, idx_rstime];  # :V for radiosonde
+    catch
+
+        data[:V][idx_rslevel, idx_rstime];
+    end
+
+    QV = try
+        data[:QV][idx_rslevel, idx_rstime];   # :qv for radiosonde
+    catch
+        data[:qv][idx_rslevel, idx_rstime];
+    end
+
+    RH = if haskey(data, :RHx)
+        data[:RH]
+    elseif haskey(data, :rh)
+        data[:rh]
     else
-        NaN32, NaN32, NaN32
+        @info "Key :RH not found in data. Calculating relative humidity"
+        ATMOStools.qv_to_rh(QV, 1f1data[:Pa][idx_rslevel, idx_rstime], 273.15 .+ data[:T][idx_rslevel, idx_rstime]);
     end
-end
-##
-# TROPOS cloudnet categorization:
-#rs_file = ARMtools.getFilePattern("/home/psgarfias/LIM/data/B07/arctic-mosaic/CloudNet/output", "TROPOS/processed/categorize", yy, mm, dd, fileext="categorize.nc");
 
-#data = CloudnetTools.readCLNFile(rs_file);
-
-idx_rstime = floor.(Int32, range(1, stop=length(data[:time]), length=25))
-idx_rslevel = let imax = findlast(<(20), data[:height])
-    floor.(Int32, range(1, stop=imax, length=137))
-end;
-
-# dimentions:
-Ntime = length(idx_rstime)
-Nlevel = length(idx_rslevel)
-Nfreq = length(freq)
-
-# Meteorological variables:
-# LAT, LON, ALT = data[:lat], data[:lon], data[:alt]
-HEIGHT = repeat(1f3data[:height][idx_rslevel], 1, length(idx_rstime) );
-LEVELS = (length(idx_rslevel):-1:1)
-Pa = 1f3data[:Pa][idx_rslevel, idx_rstime];  # 1f3* for radiosonde
-TK = data[:T][idx_rslevel, idx_rstime];# .+ 273.15;
-
-U = try
-    data[:UWIND][idx_rslevel, idx_rstime];  # :U for radiosonde
-catch
-    data[:U][idx_rslevel, idx_rstime];
-end
-V = try
-    data[:VWIND][idx_rslevel, idx_rstime];  # :V for radiosonde
-catch
-    data[:V][idx_rslevel, idx_rstime];
-end
-QV = try
-    data[:QV][idx_rslevel, idx_rstime];   # :qv for radiosonde
-catch
-    data[:qv][idx_rslevel, idx_rstime];
-end
-
-RH = ATMOStools.qv_to_rh(QV, 1f-2data[:Pa][idx_rslevel, idx_rstime], data[:T][idx_rslevel, idx_rstime]);#data[:RH][idx_rslevel, idx_rstime];
-
-gas_atten = if haskey(data, :gas_atten)
-    let tmp = data[:gas_atten][idx_rslevel, idx_rstime]
-        reshape(tmp, Nlevel, Ntime, Nfreq)
+    gas_atten = if haskey(data, :gas_atten)
+        let tmp = data[:gas_atten][idx_rslevel, idx_rstime]
+            reshape(tmp, Nlevel, Ntime, Nfreq)
+        end
+    else
+        fill(0f0, Nlevel, Ntime, Nfreq)
     end
-else
-    fill(0f0, Nlevel, Ntime, Nfreq)
-end
 
-liq_atten = if haskey(data, :liq_atten)
-    let tmp=data[:liq_atten][idx_rslevel, idx_rstime]
-        reshape(tmp, Nlevel, Ntime, Nfreq)
+    liq_atten = if haskey(data, :liq_atten)
+        let tmp=data[:liq_atten][idx_rslevel, idx_rstime]
+            reshape(tmp, Nlevel, Ntime, Nfreq)
+        end
+    else
+        fill(0f0, Nlevel, Ntime, Nfreq)
     end
-else
-    fill(0f0, Nlevel, Ntime, Nfreq)
-end
 
-K2 = fill(0.91, Nlevel, Ntime, Nfreq); #cat(, fill(0.91, Nlevel, Ntime), dims=3);
+    K2 = fill(0.91, Nlevel, Ntime, Nfreq); #cat(, fill(0.91, Nlevel, Ntime), dims=3);
 
     # Aux variables:
     #file_time = @. Second(mwr[:time] - DateTime(2001,1,1,0,0,0));
@@ -117,7 +176,7 @@ K2 = fill(0.91, Nlevel, Ntime, Nfreq); #cat(, fill(0.91, Nlevel, Ntime), dims=3)
 
     # generating file history:
     file_history = CloudnetTools.get_parameter(data, :history, extra_params,
-                                 default="Created by Julia Lang (CloudnetTools.jl)"*string(", ", today() ));
+                                               default="Created by Julia Lang (CloudnetTools.jl)"*string(", ", today() ));
                   
 
     ARM_OUTFILE = @sprintf("%04d%02d%02d_%s_ecmwf.nc", arm_year, arm_month, arm_day, SITE);
@@ -126,8 +185,8 @@ K2 = fill(0.91, Nlevel, Ntime, Nfreq); #cat(, fill(0.91, Nlevel, Ntime), dims=3)
     ds = NCDataset(outputfile, "c", attrib = OrderedDict(
         "Conventions"               => "CF-1.7",
         "location"                  => SITE,
-        "source"                    => "ECMWF Integrated Forecast System (IFS)",
-        "institution"               => "European Centre for Medium-Range Weather Forecasting",
+        "source"                    => "Adapted ARM radiosonde data to 'Fake!' ECMWF",
+        "institution"               => "DOE ARM",
         "initialization_time"       => "2019-02-05 00:00:00 +00:00",
         "file_uuid"                 => file_uuid,
         "cloudnet_file_type"        => "model",
@@ -136,7 +195,7 @@ K2 = fill(0.91, Nlevel, Ntime, Nfreq); #cat(, fill(0.91, Nlevel, Ntime), dims=3)
         "day"                       => arm_day,
         "history"                   => file_history,
         "title"                     => "Model file from $SITE",
-        "pid"                       => "https://hdl.handle.net/21.12132/1.913566d962124797",
+        #"pid"                       => "https://hdl.handle.net/21.12132/1.913566d962124797",
     ))
 
     # Dimensions
@@ -456,8 +515,8 @@ K2 = fill(0.91, Nlevel, Ntime, Nfreq); #cat(, fill(0.91, Nlevel, Ntime), dims=3)
         "missing_value"             => Float32(-999.0),
     ))
 
-    ncsfc_ls_precip_fraction = defVar(ds,"sfc_ls_precip_fraction", Float32, ("time",), attrib = OrderedDict(
-        "units"                     => "1",
+ncsfc_ls_precip_fraction = defVar(ds,"sfc_ls_precip_fraction", Float32, ("time",), attrib = OrderedDict(
+    "units"                     => "1",
         "long_name"                 => "Large-scale precipitation fraction",
         "C_format"                  => "%.8f",
         "missing_value"             => Float32(-999.0),
@@ -513,7 +572,7 @@ K2 = fill(0.91, Nlevel, Ntime, Nfreq); #cat(, fill(0.91, Nlevel, Ntime), dims=3)
         "missing_value"             => Float32(-999.0),
     ))
 
-    ncsfc_skin_temp = defVar(ds,"sfc_skin_temp", Float32, ("time",), attrib = OrderedDict(
+ncsfc_skin_temp = defVar(ds,"sfc_skin_temp", Float32, ("time",), attrib = OrderedDict(
         "units"                     => "K",
         "long_name"                 => "Skin temperature",
         "C_format"                  => "%.2f",
@@ -627,7 +686,7 @@ ncspecific_liquid_atten = defVar(ds,"specific_liquid_atten", Float32, ("level", 
 
 # Define variables
 
- nclatitude[:] = LAT #...**
+nclatitude[:] = LAT #...**
  nclongitude[:] = LON #...**
  nchorizontal_resolution[:] = 100 #...
  nctime[:] = file_time[idx_rstime] #...**

@@ -12,13 +12,17 @@ using Printf
 """
 Funtion to show LWC and IWC cloudnet product.
 USAGE:
-> show_LWC_IWC(lwc, iwc)
-> show_LWC_IWC(lwc, iwc; )
-
+```julia-repl
+julia> show_LWC_IWC(lwc, iwc)
+julia> show_LWC_IWC(lwc, iwc; )
+```
 WHERE:
+```julia-repl
 * lwc::Dict{Symbol, Any} the cloudnet product for liquid water content,
 * iwc::Dict{Symbol, Any} the cloudnet product for ice water content,
+```
 
+    (c) Pablo Saavedra Garfias
 """
 function show_LWC_IWC(LWC::Dict, IWC::Dict; SITENAME="", mxhgt=10, twoplots=false, showisoT=true, savefig=:none, cnt::Dict, extras=Dict())
     
@@ -104,19 +108,20 @@ end
 # Function to plot the Classification data
 
 USAGE:
+```julia-repl
+julia> show_classific(cnt);
 
-julia> show\\_classific(cnt);
-
-julia> show\\_classific(cln_file); 
-
+julia> show_classific(cln_file); 
+```
 WHERE:
-* cnt::Dict dictionary ouput from read\\_CNTfile(cloudnet\\_file),
-* cln_file::String Full paht of Cloudnet data from CloudnetTools.readCLNFile(cln\\_file),
+```julia-repl
+* cnt::Dict dictionary ouput from read_CNTfile(cloudnet_file),
+* cln_file::String Full paht of Cloudnet data from CloudnetTools.readCLNFile(cln_file),
 * SITENANE::String (optional) string with name of site,
 * maxhgt::Number (optional) indicating the maximum height in km, default=8,
 * showlegend::Bool (optional) show Cloudnet legend colors, default=true
 * showatm::Dict(:wind, :isoT, :procas) to add meteo data to the plot, "wind" & "iso-temp" or "Profile cascade of variable", default=(true, true, false)
-
+```
 Output:
 * plt::Plot output plot object.
 """
@@ -336,20 +341,21 @@ end
 Function to plot the Radar, Lidar, and MWR for Cloudnet categorization:
 
 USAGE:
+```julia-repl
+julia> show_measurements(cln)
 
-julia> show\\_measurements(cln)
+julia> show_measurements(cln_file)
 
-julia> show\\_measurements(cln\\_file)
-
-julia> show\\_measurements(radar, lidar, mwr)
-
+julia> show_measurements(radar, lidar, mwr)
+```
 WHERE:
+```julia-repl
 * cln::Dict() Cloudnet categorization data from CloudnetTools.readCLNFile(),
 * cln_file::String Full path to the categorization file whos measurements to plot,
 * radar::Dict() Radar data to plot,
 * lidar::Dict() Lidar data to plot,
 * mwr::Dict Micorwave radiometer data to plot,
-
+```
 OPTIONAL ARGUMENTS:
 * atmosplot::Dict(:model\\_time, :model\\_height, :T, :UWIND, :VWIND) to add meteo data to the plot, default Dict(),
 * SITENAME::String Measurement site to show in plot, default "",
@@ -360,6 +366,8 @@ OPTIONAL ARGUMENTS:
 
 Output:
 * plt::Plot output plot object.
+
+    (c) Pablo Saavedra Garfias
 """
 function show_measurements(cln_file::String; atmosplot=Dict(), SITENAME::String="", maxhgt=8, savefig=:none, showclassific=false, extras=Dict())
     cln = CloudnetTools.readCLNFile(cln_file)

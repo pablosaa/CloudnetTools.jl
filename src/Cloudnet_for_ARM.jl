@@ -30,9 +30,9 @@ Function to convert model input data.
 To convert the file _armradar.20180121.nc_ into CloudNet input file:
 
 USAGE:
-
-julia> result = ARM.model2nc("/data/ECMWF/20180121\\_arm-nsa\\_ecmwf.nc", "/data/output")
-
+```julia-repl
+julia> result = ARM.model2nc("/data/ECMWF/20180121_arm-nsa_ecmwf.nc", "/data/output")
+```
 NOTE:
 This function is still dummy. When ECMWF input file is provides, it only copies
 that file to the ouput_path where other Cloudnet input files should be located.
@@ -58,7 +58,7 @@ Function to obtain the instrument type from netcdf attributes:
 function get_instrument_type(ns::NCDataset; default_type=nothing)
     list_attrib = ("platform_id", "datastream")
 
-    tmp = [ns.attrib[var] for var ∈ list_attrib if haskey(ns.attrib)]
+    tmp = [ns.attrib[var] for var ∈ list_attrib if haskey(ns.attrib, var)]
         
     type = if !isempty(tmp)
         tmp[1]
@@ -80,11 +80,12 @@ end
 # *****************************************************************
 """
 Function to invoque the respective ARM data converter function:
-To convert the file _armradar.20180121.nc_ into CloudNet input file:
+To convert the file \\_armradar.20180121.nc\\_ into CloudNet input file:
 
 USAGE:
-julia> result = converter(keys, input_file, output_dir)
-
+```julia-repl
+julia> result = ARM.converter(keys, input_file, output_dir)
+```
 WHERE:
 * keys::Symbol - Indicator of instrument type, it can be one of (:radar, :lidar, :mwr, :ceilometer),
 * input_file::String - full path to ARM input file to convert,
@@ -92,10 +93,11 @@ WHERE:
 * extra_params::Dict{Symbol, Any} - Dictionary of extra arguments for the convertion functions.
 
 EXAMPLE:
-julia> result = converter(:radar, "/data/KAZR/armradar.20180121.nc", "/data/output")
-
+```julia-repl
+julia> result = ARM.converter(:radar, "/data/KAZR/armradar.20180121.nc", "/data/output")
+```
     
-    (c) Pablo Saavedra G.
+    (c) Pablo Saavedra Garfias
 """
 function converter(the_key::Symbol, arm_filenc::String, out_path::String; extra_params=Dict{Symbol, Any}())
 
@@ -105,7 +107,7 @@ function converter(the_key::Symbol, arm_filenc::String, out_path::String; extra_
         elseif tmp=="ceil10m"
             ARM.lidar2nc
         else
-            @warn "Type of lidar is neither CEIL10m nor HSRL! using default as CEIL10m. Output file can be compromised!"
+            @info "Type of lidar is neither CEIL10m nor HSRL! using default as CEIL10m. Output file can be compromised!"
             ARM.lidar2nc
         end
     end
@@ -160,12 +162,12 @@ function converter(yy, mm, dd, thekey::Symbol, input_params::Dict; owndir=true)
 
     DATA_PATH = input_params[:data_path]
 
-    !isdir(DATA_PATH) && (print("bad $DATA_PATH"); return missing)
+    !isdir(DATA_PATH) && (@warn("bad $DATA_PATH"); return missing)
 
     # creating the file name for every listed product
     tmp = ARMtools.getFilePattern(DATA_PATH, product, yy, mm, dd)
 
-    isnothing(tmp) && (print("NO $product found!"); return missing)
+    isnothing(tmp) && (@warn("NO $product found!"); return missing)
 
     arm_filenc = typeof(tmp) <: Vector ? tmp[1] : tmp
 

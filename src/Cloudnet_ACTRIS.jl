@@ -27,19 +27,20 @@ end
 Function to generate the categorization file from cloudnetpy
 
 USAGE:
-
+```julia-repl
 julia> using CloudnetTools.ACTRIS
 
-julia> uuid = ACTRIS.categorize\\_it(input_files, "/tmp/categorize.nc")
-
+julia> uuid = ACTRIS.categorize_it(input_files, "/tmp/categorize.nc")
+```
 INPUT:
+```julia-repl
 * input_files::Dict{
-    :radar => "arm\\_radar.nc",
-    :lidar => "arm\\_lidar.nc",
-    :mwr   => "arm\\_mwr.nc",
-    :model => "ecmwf\\_model.nc"}
+    :radar => "arm_radar.nc",
+    :lidar => "arm_lidar.nc",
+    :mwr   => "arm_mwr.nc",
+    :model => "ecmwf_model.nc"}
 * output_file::String with the file name of the output file.
-
+```
 RETURN:
 * If successful returns the UUID of the categorization file,
 * If failed returns a warning message and nothing
@@ -64,34 +65,37 @@ end
 Function to generate cloudnetpy products i.e. iwc, lwc, der, ier, etc.
 
 USAGE:
-
-julia> uuid = ACTRIS.generate\\_products(PROD, categorize\\_file, output\\_file)
-
+```julia-repl
+julia> uuid = ACTRIS.generate_products(PROD, categorize_file, output_file)
+```
 INPUTs:
+```julia-repl
 * PROD::Symbol with the key for the product to produce, e.g. :lwc,
-* categorize\\_file::String full path to the categorize file created by cloudnetpy,
-* output\\_file:Stirng full path and file name for the generated product
-
+* categorize_file::String full path to the categorize file created by cloudnetpy,
+* output_file:Stirng full path and file name for the generated product
+```
 OR alternatively the function can be used as:
-
-julia> uuid = ACTRIS.generate\\_products(products\\_files, cloudnet\\_products)
-
+```julia-repl
+julia> uuid = ACTRIS.generate_products(products_files, cloudnet_products)
+```
 INPUTS: dictionaries containing informations as follow,
+```julia-repl
 * product_files::Dict(
-    :categorize => "/data/arm/input/arm\\_categorize.nc",
-    :iwc => "/data/arm/cloud_product/arm\\_iwc.nc",
-    :lwc => "/data/arm/cloud_product/arm\\_lwc.nc",
-    :der => "/data/arm/effradius/arm\\_der.nc")
+    :categorize => "/data/arm/input/arm_categorize.nc",
+    :iwc => "/data/arm/cloud_product/arm_iwc.nc",
+    :lwc => "/data/arm/cloud_product/arm_lwc.nc",
+    :der => "/data/arm/effradius/arm_der.nc")
 * cloudnet_products::Dict(
     :classification => false,
     :iwc => false,
     :lwc => true,
     :der => true,
     :drizzle => false)
-
+```
 RETURNS:
 * If successful the UUID of the lates product generated, otherwise type nothing
 
+    (c) Pablo Saavedra Garfias
 """
 function generate_products(K::Symbol, fn_categ::String, output_file::String)
 
