@@ -88,8 +88,13 @@ function rsonde2nc(data::Dict, output_path::String; extra_params=Dict{Symbol, An
 
     #data = CloudnetTools.readCLNFile(rs_file);
     
-    idx_rstime = floor.(Int32, range(1, stop=length(data[:time]), length=24))
-    idx_rslevel = let imax = findlast(<(20), data[:height])
+    idx_rstime = let tmp=CloudnetTools.datetime24hours(data[:time])
+        T_RS_launch = haskey(extra_params, :launch_time) ? extra_params[:launch_time] : (0:1:24)
+        out = [findmin(abs.(tmp.-T)) |> V-> V[1]<0.5 && V[2] for T ∈ T_RS_launch]
+        filter(!=(false), out)
+    end
+        #floor.(Int32, range(1, stop=length(data[:time]), length=24))
+    idx_rslevel = let imax = findlast(<(15), data[:height])
         floor.(Int32, range(1, stop=imax, length=137))
     end;
 
@@ -157,7 +162,7 @@ function rsonde2nc(data::Dict, output_path::String; extra_params=Dict{Symbol, An
 
     # Aux variables:
     #file_time = @. Second(mwr[:time] - DateTime(2001,1,1,0,0,0));
-    file_time = CloudnetTools.datetime24hours(data[:time])
+    file_time = CloudnetTools.datetime24hours(data[:time][idx_rstime]) .|> round
     
     # Creating output file for CloudNetpy
     arm_year = year(data[:time][1])
