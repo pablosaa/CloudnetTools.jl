@@ -128,9 +128,9 @@ function rsonde2nc(data::Dict, output_path::String; extra_params=Dict{Symbol, An
     end
 
     RH = if haskey(data, :RH)
-        data[:RH]
+        data[:RH][idx_rslevel, idx_rstime]
     elseif haskey(data, :rh)
-        data[:rh]
+        data[:rh][idx_rslevel, idx_rstime]
     else
         @info "Key :RH not found in data. Calculating relative humidity"
         ATMOStools.qv_to_rh(QV, 1f1data[:Pa][idx_rslevel, idx_rstime], 273.15 .+ data[:T][idx_rslevel, idx_rstime]);
