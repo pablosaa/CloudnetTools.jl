@@ -87,7 +87,7 @@ USAGE:
 julia> result = ARM.converter(keys, input_file, output_dir)
 ```
 WHERE:
-* keys::Symbol - Indicator of instrument type, it can be one of (:radar, :lidar, :mwr, :ceilometer),
+* keys::Symbol - Indicator of instrument type, it can be one of (:radar, :lidar, :mwr, :ceilometer, :radiosonde),
 * input_file::String - full path to ARM input file to convert,
 * output_dir::String - path to the ouptut directory to place the output files,
 * extra_params::Dict{Symbol, Any} - Dictionary of extra arguments for the convertion functions.
@@ -106,8 +106,8 @@ function converter(the_key::Symbol, arm_filenc::String, out_path::String; extra_
             ARM.hsrl2nc
         elseif tmp=="ceil10m"
             ARM.lidar2nc
-        else
-            @info "Type of lidar is neither CEIL10m nor HSRL! using default as CEIL10m. Output file can be compromised!"
+        elseif tmp ∉ ("mwr", "kazr", "mwacr", "interpolatedsonde", "arsclkazr1kollias")
+            @info "Type of $(tmp) is neither CEIL10m nor HSRL! using default as CEIL10m. Output file can be compromised!"
             ARM.lidar2nc
         end
     end
@@ -116,9 +116,10 @@ function converter(the_key::Symbol, arm_filenc::String, out_path::String; extra_
     list_of_func = Dict(
         :radar => ARM.kazr2nc,
         :lidar => func_for_lidar,
-        :radiometer => ARM.mwr2nc,
+        :mwr => ARM.mwr2nc,
         :model => ARM.model2nc,
         :ceilometer => ARM.lidar2nc
+        :radiosonde => ARM.rsonde2nc
     );
 
     !isdir(out_path) && mkpath(out_path);

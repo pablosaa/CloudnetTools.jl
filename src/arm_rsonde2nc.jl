@@ -106,7 +106,7 @@ function rsonde2nc(data::Dict, output_path::String; extra_params=Dict{Symbol, An
 
     Pa = 1f3data[:Pa][idx_rslevel, idx_rstime];  # 1f3* for radiosonde
 
-    TK = data[:T][idx_rslevel, idx_rstime];# .+ 273.15;
+    TK = data[:T][idx_rslevel, idx_rstime] .+ 273.15;
 
     U = try
         data[:UWIND][idx_rslevel, idx_rstime];  # :U for radiosonde
@@ -127,7 +127,7 @@ function rsonde2nc(data::Dict, output_path::String; extra_params=Dict{Symbol, An
         data[:qv][idx_rslevel, idx_rstime];
     end
 
-    RH = if haskey(data, :RHx)
+    RH = if haskey(data, :RH)
         data[:RH]
     elseif haskey(data, :rh)
         data[:rh]

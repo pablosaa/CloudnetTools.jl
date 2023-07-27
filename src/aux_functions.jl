@@ -48,11 +48,21 @@ function get_parameter(data::Dict, param::Symbol, extra_params::Dict{Symbol, Any
     elseif haskey(data, param)
         data[param]
     else
+        @warn "$(param) not found in data/extra_params, returning default=$(default)"
         default
     end
 
     if !isempty(lims) && !isnothing(out_value)
-        return check_limits(out_value, lims) ? out_value : default
+        
+        if check_limits(out_value, lims)
+            return out_value
+        elseif isnan(out_value)
+            @warn "get_parameter found $(out_value) to be $(param)"
+            return out_value
+        else
+            @warn "get_parameter found $(param) out of lims=$(lims)"
+            return out_value
+        end
     else
         return out_value
     end
