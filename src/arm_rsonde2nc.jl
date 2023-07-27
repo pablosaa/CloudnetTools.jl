@@ -135,6 +135,7 @@ function rsonde2nc(data::Dict, output_path::String; extra_params=Dict{Symbol, An
         @info "Key :RH not found in data. Calculating relative humidity"
         ATMOStools.qv_to_rh(QV, 1f1data[:Pa][idx_rslevel, idx_rstime], 273.15 .+ data[:T][idx_rslevel, idx_rstime]);
     end
+    RH ./= 100  # to convert from % to "1" units.
 
     gas_atten = if haskey(data, :gas_atten)
         let tmp = data[:gas_atten][idx_rslevel, idx_rstime]
