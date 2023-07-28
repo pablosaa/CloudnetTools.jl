@@ -95,7 +95,7 @@ function rsonde2nc(data::Dict, output_path::String; extra_params=Dict{Symbol, An
     end
         #floor.(Int32, range(1, stop=length(data[:time]), length=24))
     idx_rslevel = let imax = findlast(<(15), data[:height])
-        floor.(Int32, range(1, stop=imax, length=137))
+        floor.(Int32, range(1, stop=imax, length=137)) |> unique
     end;
 
     # dimentions:
