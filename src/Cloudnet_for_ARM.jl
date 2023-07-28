@@ -118,7 +118,7 @@ function converter(the_key::Symbol, arm_filenc::String, out_path::String; extra_
         :lidar => func_for_lidar,
         :mwr => ARM.mwr2nc,
         :model => ARM.model2nc,
-        :ceilometer => ARM.lidar2nc
+        :ceilometer => ARM.lidar2nc,
         :radiosonde => ARM.rsonde2nc
     );
 

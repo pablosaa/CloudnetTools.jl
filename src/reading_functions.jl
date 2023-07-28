@@ -9,16 +9,27 @@ File contains reading functions for the CloudnetTools.jl package
 """
 # Read Cloudnet Ice water content IWC file
 
-> iwc = readIWCFile(nfile::String; modelreso=false)
+```julia-repl
+julia> iwc = readIWCFile(nfile::String; inc_rain=false, apply_flag=false)
+```
+WHERE:
+* nfile::String Full paht to Cloudnet IWC file,
+* iwc::Dict Data containing :time, :height, :iwc, :flag
+
+OPTIONAL:
+* inc_rain::Bool Whether or not use the IWC Cloudnet variable iwc_inc_rain (Default true),
+* apply_flag::Bool Filter flag values which are not 1,2,3 (Dafault true)
+
+To have the definition of the flag values, see Metadata in IWC Cloudnet file.
 
 """
-function readIWCFile(nfile::String; modelreso=false)
+function readIWCFile(nfile::String; inc_rain=true, apply_flag=true)
 
     @assert isfile(nfile) error("$nfile cannot be found!")
 
     vars_categorize = Dict(
         :height => "height",
-        :iwc => "iwc_inc_rain",
+        :iwc => inc_rain ? "iwc_inc_rain" : "iwc",
         :flag => "iwc_retrieval_status",
     )
 
@@ -50,9 +61,11 @@ function readIWCFile(nfile::String; modelreso=false)
 
     # Adding computed variables:
     # integration of lwc only for pixels with flag=1, 2 or 3:
-    idxnan = findall(x->x ∉ [1,3], var_output[:flag])
-    var_output[:iwc][idxnan] .= NaN
-
+    if apply_flag
+        idxnan = findall(x->x ∉ (1:3), var_output[:flag])
+        var_output[:iwc][idxnan] .= NaN32
+    end
+    
     # integration of iwc only for pixels with flag=1 or 2:
     # Cloudnetpy units iwc [kg m⁻³] and height [m]
     ##var_output[:IWP] = let tmp = 1f3var_output[:iwc]
@@ -70,11 +83,21 @@ end
 # Read Liquid water content LWC file
 """
 # Read Liquid water content LWC file
+```julia-repl
+julia> lwc = readLWCFile(nfile::String; apply_flag=false)
+```
+WHERE:
+* nfile::String Full paht to Cloudnet LWC file,
+* iwc::Dict Data containing :time, :height, :lwc, :LWP, :flag
 
-> lwc = readLWCFile(nfile::String; modelreso=false)
+OPTIONAL:
+* inc_rain::Bool Whether or not use the IWC Cloudnet variable iwc_inc_rain (Default true),
+* apply_flag::Bool Filter flag values which are not 1,2,3 (Dafault true)
+
+To have the definition of the flag values, see Metadata in LWC Cloudnet file.
 
 """
-function readLWCFile(nfile::String; modelreso=false)
+function readLWCFile(nfile::String; apply_flag=true)
 
     @assert isfile(nfile) error("$nfile cannot be found!")
 
@@ -113,8 +136,11 @@ function readLWCFile(nfile::String; modelreso=false)
 
     # Additional computation:
     # integration of lwc only for pixels with flag=1, 2 or 3:
-    @. var_output[:lwc][!(0 < var_output[:flag] < 4)] = NaN
-    
+    if apply_flag
+        idxnan = findall(x->x ∉ (1:3), var_output[:flag])
+        var_output[:lwc][idxnan] .= NaN32
+    end
+
     return var_output
 end
 # ----/
@@ -123,9 +149,9 @@ end
 # Reading Classification & Categorize files both at once:
 """
 # Fuction to read Cloudnet classification or category files:
-
-> classi = readCLNFile(nfile::String; modelreso=false)
-
+```julia-repl
+julia> classi = readCLNFile(nfile::String; modelreso=false)
+```
 if optional parameter modelreso=true, then the model variables are
 interpolated from hourly resolution to Cloudnet resolution.
 """
@@ -316,19 +342,19 @@ end  # end of function
 The function reads 'infile' assuming it is a Der file and it assumes
 that the Ier file is in the same directory. Otherwise Ier file needs to
 be explicitly given as optional argument 'altfile=""' as follow:
-
-> reff = readReffFile(infile)
-> reff = readReffFile(infile; altfile="ier_file.nc")
-
+```julia-repl
+julia> reff = readReffFile(infile)
+julia> reff = readReffFile(infile; altfile="ier_file.nc")
+```
 WHERE:
-infile::String Input file for Der or Ier cloudnet file
-altfile::String (Optional) if String given should be a Der file of Ier file
+* infile::String Input file for Der or Ier cloudnet file
+* altfile::String (Optional) if String given should be a Der file of Ier file
 
 For legacy Cloudnet files, the reff_Fischer and reff_ice files needs to be
 explicitly assigned to 'infile' and 'altfile', respectively.
 
 OUTPUT:
-reff::Dict Dictionary contaning the data collected from both files Der and Ier.
+* reff::Dict Dictionary contaning the data collected from both files Der and Ier.
 """
 function readReffFile(nfile::String; altfile::String="")
 
