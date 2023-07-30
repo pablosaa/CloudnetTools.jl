@@ -74,10 +74,10 @@ end
 """
 Function to check whether the data is between the given limits:
 USAGE:
-> check_limits(mwr[:lat], (-90, 90))
-> true
-If latitude data in mwr is correct, otherwise returns false.
+julia> check_limits(mwr[:lat], (-90, 90))
+julia> true
 
+If latitude data in mwr is correct, otherwise returns false.
 """
 function check_limits(data, limits::Tuple{Any, Any})
     return all(limits[1] .≤ extrema(data) .≤ limits[2])
@@ -103,7 +103,7 @@ subsequent days, e.g. 01:30:00 of next days will output 25.5
 
 """
 function datetime24hours(time_in::DateTime)
-    return hour.(time_in) + minute.(time_in)/60. + (second.(time_in) .+ 1f3millisecond.(time_in))/3600.0;
+    return hour.(time_in) + minute.(time_in)/60. + (second.(time_in) .+ 1f-3millisecond.(time_in))/3600.0;
 end
 function datetime24hours(time_in::Vector{DateTime})
     days_in_date = day.(time_in)
