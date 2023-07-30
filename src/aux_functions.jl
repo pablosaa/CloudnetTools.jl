@@ -87,15 +87,28 @@ end
 # ****************************************
 """
 Function to convert a vector of DateTime to the fraction of day as Real numbers:
+
 USAGE:
-> hourofday = datatime24hours(nc[:time])
+julia> hourofday = datatime24hours(nc[:time])
+
 WHERE:
-* nc[:time] is a Vector{Datetime}
+* nc[:time]::Vector{DateTime} or
+* nc[:time]::Datetime
+
+OUTPUT:
 * hourofday is the fraciton of the 24hr day, e.g. 12:30:00 is 12.5
 
+NOTE: If the input DateTime vector contains multiple days, 24 is added to the
+subsequent days, e.g. 01:30:00 of next days will output 25.5
+
 """
+function datetime24hours(time_in::DateTime)
+    return hour.(time_in) + minute.(time_in)/60. + (second.(time_in) .+ 1f3millisecond.(time_in))/3600.0;
+end
 function datetime24hours(time_in::Vector{DateTime})
-    return 24(day.(time_in) .- day.(time_in[1])) .+ hour.(time_in) + minute.(time_in)/60. + second.(time_in)/3600.0;
+    days_in_date = day.(time_in)
+    unique(days_in_date) |> x-> length(x)>1 && @warn "Multiple days in DateTime vector to convert as a fraction of 24 hours!"
+    return 24(day.(time_in) .- day.(time_in[1])) .+ datetime24hours.(time_in)
 end
 # ----/
 
