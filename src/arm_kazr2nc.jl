@@ -1,23 +1,41 @@
-function kazr2nc(radar_file::String, output_path::String; extra_params=Dict{Symbol, Any}())
+"""
+Function to convert ARM radar file to Cloudnet radar input file.
+USAGE:
+```julia-repl
+julia> kazr2nc(radar_file, output_path)
+julia> kazr2nc(radar_file, output_path; extra_params=extras)
+julia> kazr2nc(list_files, output_path)
+julia> kazr2nc(data, output_path)
+```
+WHERE:
+* radar\\_file::String full path to ARM radar netCDF file,
+* output\\_path::Stirng path to put the converted file,
+* list\\_files::Vector{String} several ARM files to be concatenated,
+* data::Dict dataset readed by ARMtools.getKAZRData(armfile)
+* extra\\_params::Dict (Optional) dictionary with alternative parameter to pass.
+
+Part of ```CloudnetTools.jl```, see LICENSE.TXT
+"""
+function kazr2nc(radar_file::String, output_path::String; extra_params=Dict())
     # Reading input ARM netCDF file:
     
     if !isfile(radar_file)
         error("$radar_file does not exist!")
     end 
 
-    radar = ARMtools.getKAZRData(radar_file)
+    radar = ARMtools.getKAZRData(radar_file; extra_params...)
 
     return kazr2nc(radar, output_path, extra_params=extra_params)
 end
-function kazr2nc(radar_file::Vector{String}, output_path::String; extra_params=Dict{Symbol, Any}())
+function kazr2nc(radar_file::Vector{String}, output_path::String; extra_params=Dict())
     # Reading input ARM netCDF file:
     
-    radar = ARMtools.getKAZRData(radar_file)
+    radar = ARMtools.getKAZRData(radar_file; extra_params...)
 
     return kazr2nc(radar, output_path, extra_params=extra_params)
 end
 
-function kazr2nc(radar::Dict, output_path::String; extra_params=Dict{Symbol, Any}())
+function kazr2nc(radar::Dict, output_path::String; extra_params=Dict())
 
     # Script to adapt ARM KAZR radar to netCDF input for cloudnetpy
     # 

@@ -1,6 +1,10 @@
 #=
 ********************************************************************
 File contains auxiliary functions for the CloudnetTools.jl package
+
+(c) 2022 P. Saavedra Garfias
+University of Leipzig
+
 ********************************************************************
 =#
 using ImageFiltering
@@ -11,11 +15,13 @@ using Statistics
 Function to return a String containing the cloudnet site information
 based on information from the data file or extra given to the function:
 USAGE:
-> get_SITE(data, extra_params)
-
-returns: "mosaic-arm"
 if the data or extra_params contain the keys: [:site] = "arm", [:campaign]="mosaic"
-
+calling the function will result on:
+```julia-repl
+julia> get_SITE(data, extra_params)
+julia> "mosaic-arm"
+```
+Part of ```CloudnetTools.jl```. See LICENSE.TXT
 """
 function get_SITE(data::Dict, extra_params::Dict; inkeys=(:site, :campaing))
     # checking if inkeys exist in extra_params or data:
@@ -34,13 +40,17 @@ end
 Returm given parameter from either data input Dict or extra_params input Dict,
 if not present in any of them, then return a default
 USAGE:
-> get_parameter(lidar, :λ_nm, input_params, default=510, lims=(450, 1005))
-> 910
+```julia-repl
+julia> get_parameter(lidar, :λ_nm, input_params, default=510, lims=(450, 1005))
+julia> 910
+```
 if lidar[:λ_nm] has the value of 910 and that value belongs to lim. In case lidar[:λ_nm] does not exist, then the fiven default value of 510 is returned.
 
 The function priority return values are from: input_params (if exist), data Dict (if exist), or default (if given), otherwise returns nothing.
+
+Part of ```CloudnetTools.jl```, see LICENSE.TXT
 """
-function get_parameter(data::Dict, param::Symbol, extra_params::Dict{Symbol, Any};
+function get_parameter(data::Dict, param::Symbol, extra_params::Dict;
                        default=nothing, lims=())
 
     out_value = if haskey(extra_params, param)
@@ -74,10 +84,13 @@ end
 """
 Function to check whether the data is between the given limits:
 USAGE:
+```julia-repl
 julia> check_limits(mwr[:lat], (-90, 90))
 julia> true
-
+```
 If latitude data in mwr is correct, otherwise returns false.
+
+Part of ```CloudnetTools.jl```, see LICENSE.TXT
 """
 function check_limits(data, limits::Tuple{Any, Any})
     return all(limits[1] .≤ extrema(data) .≤ limits[2])
@@ -89,8 +102,9 @@ end
 Function to convert a vector of DateTime to the fraction of day as Real numbers:
 
 USAGE:
+```julia-repl
 julia> hourofday = datatime24hours(nc[:time])
-
+```
 WHERE:
 * nc[:time]::Vector{DateTime} or
 * nc[:time]::Datetime
@@ -101,6 +115,7 @@ OUTPUT:
 NOTE: If the input DateTime vector contains multiple days, 24 is added to the
 subsequent days, e.g. 01:30:00 of next days will output 25.5
 
+Part of ```CloudnetTools.jl```, see LICENSE.TXT
 """
 function datetime24hours(time_in::DateTime)
     return hour.(time_in) + minute.(time_in)/60. + (second.(time_in) .+ 1f-3millisecond.(time_in))/3600.0;
@@ -113,20 +128,29 @@ end
 # ----/
 
 """
-Read time from netCDF file as fraction of the day and
-convert it to Julia DateTime format.
+Convert given year, month, day, hour_day to Julia DateTime format.
+
+When a netCDF NCDataset is given, the variable time is converted it to Julia DateTime format.
+This is useful when the variable time in the netCDF is given as a fraction of day.
 USAGE:
-> nctime = convert_time2DateTime(year, month, day, hour_of_day)
+```julia-repl
+julia> nctime = convert_time2DateTime(year, month, day, hour_of_day)
+julia> nctime = convert_time2DateTime(nc; time_var="other_time_variable")
+```
 WHERE:
 * year, month and day -> Float32
 * hour_of_day -> Vector{Float32} with fraction of day [0 to 24]
+* nc::NCDataset identifier for the netCDF file to read.
+* time_var::String (Optional) given the netCDF variable to read instead.
+RETURN:
+* nctime::DateTime for ::Vector{DateTime}
 
-or
-> nctime = convert_time2DateTime(nc::NCDataset)
-WHERE:
-* nc -> NCDataset identifier for an opened netCDF file,
-* nctime -> Vector{DataTime}
-
+EXAMPLE:
+```julia-repl
+julia> nc = NCDataset("/data/mwr.nc", "r");
+julia> nctime = convert_time2DateTime(nc; time_var="time_hr");
+```
+Part of ```CloudnetTools.jl```, see LICENSE.TXT
 """
 function convert_time2DateTime(yy::Int64, mm::Int64, dd::Int64, hr_time::AbstractVector)::Vector{DateTime}
     hh = floor.(Int64, hr_time)
@@ -163,23 +187,23 @@ end
 Integration of matrix x over dims=1 skipping NaN, optionally
 the integration is perform with respect of vector dh.
 USAGE:
-
-Xt = ∫fdh(Xi::Matrix, H::Vector)
-Xt = ∫fdh(Xi::Matrix, H::Vector; h₀=CBH, hₜ=CBT)
-
+```julia-repl
+julia> Xt = ∫fdh(Xi::Matrix, H::Vector)
+julia> Xt = ∫fdh(Xi::Matrix, H::Vector; h₀=CBH, hₜ=CBT)
+```
 WHERE:
-
-Xi -> Matrix to integrate over 1st dimension,
-H  -> Vector with the integrating variable, same length as Xi 1st dimension,
-h₀ -> (Optional) Vector with low limit height to integrate from,
-hₜ -> (Opitonal) Vector with top limit height to integrate to.
+* Xi::Matrix - to integrate over 1st dimension,
+* H::Vector  - with the integrating variable, same length as Xi 1st dimension,
+* h₀::Vector - (Optional) with low limit height to integrate from,
+* hₜ::Vector - (Opitonal) with top limit height to integrate to.
 
 If neither h₀ nor hₜ are provided, then the integral is performed over whole Xi 1st
 dimension. Note that h₀ and hₜ, if provided, need to have same length as Xi 2nd dimension.
 
 OUTPUT:
-Xt -> Vector with the integrated value, same length as Xi 2nd dimension.
- 
+* Xt::Vector - with the integrated value, same length as Xi 2nd dimension.
+
+Part of ```CloudnetTools.jl```, see LICENSE.TXT
 """
 function ∫fdh(x::AbstractArray, H::AbstractVector; h₀=Real[], hₜ=Real[])
     # getting dimensions:
@@ -257,16 +281,17 @@ end
 # Interpolate Meteo data from Model to CloudNet resolution
 """
 # Interpolate Meteorological data from Model to CloudNet resolution.
-
-> var_out = ConvertModelResolution(cln_in::Dict{Symbol, Any},
+```julia-repl
+julia> var_out = ConvertModelResolution(cln_in::Dict{Symbol, Any},
                                    model_time::Vector{Float32},
                                    model_height::Vector{Float32};
                                    cln_time=nothing,
                                    cln_height=nothing)
-
+```
 the output containg the model variables :T, :Pa, :UWIND, :VWIND, :QV
 but at the same resolution as cloudnet.
 
+Part of ```CloudnetTools.jl```, see LICENSE.TXT
 """
 function ConvertModelResolution(cln_in::Dict{Symbol, Any},
                                 model_time::Vector{<:Any},
@@ -322,19 +347,18 @@ end
 Estimate base and top height of up to 3 cloud layers base on Cloudnet classification.
 
 USAGE:
-julia> CBH, CTH = estimate_cloud_layers(clnet::Dict)
-
-julia> CBH, CTH = estimate_cloud_layers(clnet::Dict; lidar=ceilometer, nlayers=2)
-
-julia> CBH, CTH, CLB = estimate_cloud_layers(clnet::Dict; nlayers=2, liquid_base=true)
-
+```julia-repl
+julia> CBH, CTH = estimate_cloud_layers(clnet)
+julia> CBH, CTH = estimate_cloud_layers(clnet; lidar=ceilometer, nlayers=2)
+julia> CBH, CTH, CLB = estimate_cloud_layers(clnet; nlayers=2, liquid_base=true)
+```
 WHERE:
 * clnet::Dict is the Cloudnet data from categorize and classification output files,
 * lidar::Dict (Optional) the lidar data with keys :time and :CBH [m]
-* nlayers (Optional) number of cloud layer to try to detect, default 3
-* alttime (Optional) a vector ::TimeDate to which the ouput will be fit, defualt none
-* smooth_classify (Optional) Bool to smooth the 2D CLASSIFICATION to avoid spikes.
-* liquid_base (Optional) if true then add extra output with liquid cloud base. 
+* nlayers::Int (Optional) number of cloud layer to try to detect, default 3
+* alttime::Vector{DateTime} (Optional) to which the ouput will be fit, defualt none
+* smooth\\_classify::Bool (Optional) to smooth the 2D CLASSIFICATION to avoid spikes.
+* liquid\\_base::Bool (Optional) if true then add extra output with liquid cloud base. 
 
 OUTPUT:
 * CBH::Matrix(ntime, nlayers) with cloud base height in m
@@ -343,6 +367,7 @@ OUTPUT:
 
 NOTE: be sure clnet[:height] and lidar[:CBH] have the same units, e.g. m
 
+Part of ```CloudnetTools.jl```, see LICENSE.TXT
 """
 function estimate_cloud_layers(clnet::Dict; lidar=nothing, nlayers=3, alttime=nothing, smooth_classify=false, liquid_base=false)
 
@@ -438,16 +463,18 @@ end
 Function to interpolate variables to the cloudnet time (and height)
 
 USAGE:
-
+```julia-repl
 julia> var_out = Interpolate2Cloudnet(clnet, time_in, var_in)
-
+```
 WHERE:
 * clnet::Dict with cloudnet output,
-* time_in::Vector{DateTime} with the time of variable to interpolate,
-* var_in::Vector{Any} with the variable to interpolate.
+* time\\_in::Vector{DateTime} with the time of variable to interpolate,
+* var\\_in::Vector{Any} with the variable to interpolate.
 
 OUTPUT:
-* var_out::Vector{Any} with the interpolated variable at cloudnet time.
+* var\\_out::Vector{Any} with the interpolated variable at cloudnet time.
+
+Part of ```CloudnetTools.jl```, see LICENSE.TXT
 """
 function Interpolate2Cloudnet(clnet::Dict, time_in::Vector, var_in::Vector)
     cnt_hr = datetime24hours(clnet[:time])
@@ -476,23 +503,22 @@ end
 Function to estimate the temperature of given altitudes,
 For instance the temperature at cloud base & top heights.
 
+```julia-repl
 julia> T_h = cloud_temperature(data, H)
-
-julia> T_h = cloud_temperature(data, H; t_hr::Vector)
-
 julia> T_h = cloud_temperature(data, H, clnet=clnet, var=:Temp)
-
+```
 WHERE:
 * data::Dict() data with variable keys :time and :T for temperature, (can be clnet),
 * H::Array{T}(time, layers) with the altitudes at which the temperature is estimated,
-* clnet::Dict (Optional) when data is not same resolution, use cloudnet :time,
+* clnet::Dict (Optional) when data is not same resolution, interpolate to clnet[:time],
 * var::Symbol (Optional) variable from data to be used, default :T
 
 Input Dict data must have variables with key :T for temperature and :height.
 The output will have the same units as data[:T] and same dimentions as H.
 
-NOTE: be sure H_in and data[:height] have the same units, e.g. m
+NOTE: be sure H and data[:height] have the same units, e.g. m
 
+Part of ```CloudnetTools.jl```, see LICENSE.TXT
 """
 function cloud_temperature(data::Dict, H_in::Array; clnet=nothing, var=:T)
     
@@ -509,7 +535,7 @@ function cloud_temperature(data::Dict, H_in::Array; clnet=nothing, var=:T)
     elseif length(data[:time]) == nt
         data[var]
     else
-        @error "data :time length not compatible with H_in length!"    
+        @error "data :time length not compatible with length of input H!"    
     end
 
     for h ∈ 1:nlyr

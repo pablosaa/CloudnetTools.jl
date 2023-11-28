@@ -27,7 +27,6 @@ Base.include(ARM, "arm_rsonde2nc.jl")
 # *****************************************************************
 """
 Function to convert model input data.
-To convert the file _armradar.20180121.nc_ into CloudNet input file:
 
 USAGE:
 ```julia-repl
@@ -35,11 +34,11 @@ julia> result = ARM.model2nc("/data/ECMWF/20180121_arm-nsa_ecmwf.nc", "/data/out
 ```
 NOTE:
 This function is still dummy. When ECMWF input file is provides, it only copies
-that file to the ouput_path where other Cloudnet input files should be located.
-In the future, ARM radiosonde data will be processed as model data and converted
+that file to the ouput_path where other Cloudnet input files might be located.
+In the future, other alternative MWP models will be processed and converted
 to Cloudnet input.
     
-    (c) Pablo Saavedra G.
+Part of ```CloudnetTools.jl```, see LICENSE.TXT
 """
 function model2nc(infile::String, output_path::String)
 
@@ -54,6 +53,18 @@ end
 # *****************************************************************
 """
 Function to obtain the instrument type from netcdf attributes:
+
+USAGE:
+```julia-repl
+julia> get_instrument_type("/data/KAZR/ARSCL/nsaarsclkazr1kolliasC1.c0.20171109.000000.nc")
+julia> "arsclkazr1kollias"
+```
+Returning the value of parameters "platform_id" or "datastream".
+In case the NetCDF file does not include any of those paramters, `nothing` is
+returned. An alternative output can be used by given an optional paramter
+`default_type="kazr"`.
+
+Part of ```CloudnetTools.jl```, see LICENSE.TXT
 """
 function get_instrument_type(ns::NCDataset; default_type=nothing)
     list_attrib = ("platform_id", "datastream")
@@ -79,25 +90,43 @@ end
 
 # *****************************************************************
 """
-Function to invoque the respective ARM data converter function:
-To convert the file \\_armradar.20180121.nc\\_ into CloudNet input file:
+Function to invoque the respective ARM data converter given a ARM NetCDF:
 
 USAGE:
 ```julia-repl
-julia> result = ARM.converter(keys, input_file, output_dir)
+julia> ARM.converter(keys, input_file, output_dir)
+julia> ARM.converter(list_of_files, output_dir)
+julia> ARM.converter(yyyy, mm, dd, keys, input_params)
 ```
 WHERE:
 * keys::Symbol - Indicator of instrument type, it can be one of (:radar, :lidar, :mwr, :ceilometer, :radiosonde),
 * input_file::String - full path to ARM input file to convert,
 * output_dir::String - path to the ouptut directory to place the output files,
-* extra_params::Dict{Symbol, Any} - Dictionary of extra arguments for the convertion functions.
+* list_of_files::Dict{Symbol, String} - with keys to input files e.g. :radar=>"/data/KAZR/armradar.20180121.nc",
+* yyyy::Int - year
+* mm::Int - month
+* dd::Int - day
+* extra_params::Dict{Symbol, Any} - Optional Dictionary with extra arguments, default empty.
 
 EXAMPLE:
+To convert the file "/data/KAZR/armradar.20180121.nc" into CloudNet input file, with extra parameters given
+by the dictionary `extras`:
 ```julia-repl
-julia> result = ARM.converter(:radar, "/data/KAZR/armradar.20180121.nc", "/data/output")
+julia> extras = Dict(:snr_filter=>nothing, :site=>"arctic", :campaign=>"mosaic", :lat=>82, :lon=>105);
+julia> result = ARM.converter(:radar, "/data/KAZR/armradar.20180121.nc", "/output"; extra_params=extras)
+julia> "20180121_arctic-mosaic_radar.nc"
 ```
-    
-    (c) Pablo Saavedra Garfias
+Alternatively:
+```julia-repl
+julia> list_of_files=Dict(:radar=>"/data/KAZR/armkazr.20180121.nc",
+                          :lidar=>"/data/CEIL10m/armceil10m.20180121.nc",
+                          :mwr=>"/data/MWR/armret1.20180121.nc",
+                          :radiosonde=>"/data/INTERPOLATESONDE/arminterpolrs.20180121.nc");
+julia> ARM.converter(list_of_files, "/output"; extra_params=extras)
+```
+
+Part of ```CloudnetTools.jl```, see LICENSE.TXT
+(c) Pablo Saavedra Garfias
 """
 function converter(the_key::Symbol, arm_filenc::String, out_path::String; extra_params=Dict{Symbol, Any}())
 

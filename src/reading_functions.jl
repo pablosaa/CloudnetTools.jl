@@ -17,11 +17,12 @@ WHERE:
 * iwc::Dict Data containing :time, :height, :iwc, :flag
 
 OPTIONAL:
-* inc_rain::Bool Whether or not use the IWC Cloudnet variable iwc_inc_rain (Default true),
-* apply_flag::Bool Filter flag values which are not 1,2,3 (Dafault true)
+* inc\\_rain::Bool Whether or not use the IWC Cloudnet variable iwc_inc_rain (Default true),
+* apply\\_flag::Bool Filter flag values which are not 1,2,3 (Dafault true)
 
 To have the definition of the flag values, see Metadata in IWC Cloudnet file.
 
+Part of ```CloudnetTools.jl```, see LICENSE.TXT
 """
 function readIWCFile(nfile::String; inc_rain=true, apply_flag=true)
 
@@ -91,11 +92,12 @@ WHERE:
 * iwc::Dict Data containing :time, :height, :lwc, :LWP, :flag
 
 OPTIONAL:
-* inc_rain::Bool Whether or not use the IWC Cloudnet variable iwc_inc_rain (Default true),
-* apply_flag::Bool Filter flag values which are not 1,2,3 (Dafault true)
+* inc\\_rain::Bool Whether or not use the IWC Cloudnet variable iwc_inc_rain (Default true),
+* apply\\_flag::Bool Filter flag values which are not 1,2,3 (Dafault true)
 
 To have the definition of the flag values, see Metadata in LWC Cloudnet file.
 
+Part of ```CloudnetTools.jl```, see LICENSE.TXT
 """
 function readLWCFile(nfile::String; apply_flag=true)
 
@@ -149,11 +151,23 @@ end
 # Reading Classification & Categorize files both at once:
 """
 # Fuction to read Cloudnet classification or category files:
+
+USAGE:
 ```julia-repl
-julia> classi = readCLNFile(nfile::String; modelreso=false)
+julia> classi = readCLNFile(catfile; modelreso=false)
+julia> classi = readCLNFile(catfile; altfile="cloudnet_classify.nc")
 ```
-if optional parameter modelreso=true, then the model variables are
+WHERE:
+* catfile::String full path to cloudnet categorization file,
+* modelreso::Bool (Optional) if true, the model variables are
 interpolated from hourly resolution to Cloudnet resolution.
+* altfile::String (Optional) alternative classification file.
+
+NOTE: ```catfile``` needs to have the "categorize" in string, then that is
+automatically converted to classification file by replacing "categorize"->"classification".
+If Classification file has a different name, then use ```altfile``` string.
+
+Part of ```CloudnetTools.jl```, see LICENSE.TXT
 """
 function readCLNFile(nfile::Vector{String}; modelreso=false, altfile=nothing)
     cln_out = Dict{Symbol, Any}()
@@ -355,6 +369,20 @@ explicitly assigned to 'infile' and 'altfile', respectively.
 
 OUTPUT:
 * reff::Dict Dictionary contaning the data collected from both files Der and Ier.
+
+Tha variables loaded from the Cloudnet NetCDF files by default are:
+```julia-repl
+:height => "height",
+:Dₑᵣ => "der_scaled" or "r_eff_Frisch_scaled"  #(legacy)
+:δDₑᵣ => "der_scaled_error" or "r_eff_Frisch_scaled_error"  #(legacy)
+:dₑᵣ => "der" or "r_eff_Frisch"  #(legacy)
+:δdₑᵣ => "der_error" or "r_eff_Frisch_error",  #(legacy)
+:Nₗ => "N_scaled",
+:Dflag => "der_retrieval_status" or "retrieval_status" #(legacy)
+```
+The variable names marked as (legacy) are refered for the old MATLAB Cloudnet version.
+
+Part of ```CloudnetTools.jl```, see LICENSE.TXT
 """
 function readReffFile(nfile::String; altfile::String="")
 
