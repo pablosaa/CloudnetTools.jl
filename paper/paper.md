@@ -20,7 +20,7 @@ bibliography: paper.bib
 ---
 
 # Summary
-The Aerosol, Clouds and Trace Gases Research Infrastructure (ACTRIS) [@ACTRIS-handbook] has developed an open source version of the original propietary Cloudnet classification algorithm by [@illingworth-cloudnetcontinuous-2007] that covers the full processing chain for the ACTRIS network [@tukiainen-joss_2020]. 
+The Aerosol, Clouds and Trace Gases Research Infrastructure (ACTRIS) [@ACTRIS-handbook] has developed an open source version of the original propietary Cloudnet classification algorithm by [@illingworth-cloudnetcontinuous-2007] that covers the full processing chain for the ACTRIS network [@tukiainen-joss-2020]. 
 
 # Statement of need
 The Atmospheric Radiation Measurement (ARM) program of the Department of Energy in the United States of America is one of the most important program carring on long-term and valuable remote sensing observations for the study of the atmosphere and climate (https://arm.gov/data). The ARM program operates several observational facilities, some of them have been monitoring the atmosphere for more than 30 years. The ARM facilites comprises of permanent locations as well as deployments by its mobile facilitis (MF) to an unprecedented number of locations ranging from the Amazon to the Arctic.
@@ -31,17 +31,17 @@ Although the Cloudnetpy algorithm supports a rich number of remote sensing instr
 | Instruement         | Products                | Level                 |
 +:====================+:=======================:+:=====================:+
 | RADAR               | `KAZR ARSCR 1kollias`   | c0, c1                |
-|                     +-------------------------+-----------------------+
++---------------------+-------------------------+-----------------------+
 |                     |  KAZR CRF GE            | a1                    |
-|                     +-------------------------+-----------------------+
++---------------------+-------------------------+-----------------------+
 |                     |  MWACR CFR              | a1                    |
 +---------------------+-------------------------+-----------------------+
 | LIDAR               | `CEIL10m`               | b1                    |
-|                     +-------------------------+-----------------------+
++---------------------+-------------------------+-----------------------+
 |                     | `HSRL`                  | a1                    |
 +---------------------+-------------------------+-----------------------+
 | MWR                 | `LOS    `               | b1                    |
-|                     +-------------------------+-----------------------+
++---------------------+-------------------------+-----------------------+
 |                     | `RET 1liljclou `        | c1                    |
 +---------------------+-------------------------+-----------------------+
 | RADIOSONDE          | `INTERPOLATESONDE`      | c1                    |
