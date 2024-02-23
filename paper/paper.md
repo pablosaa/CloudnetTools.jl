@@ -10,7 +10,10 @@ tags:
 authors:
   - name: Pablo Saavedra~Garfias
     orcid: 0000-0002-4596-946X
-	corresponding: true
+    corresponding: true
+    affiliation: 1
+  - name: Heike Kalesse-Los
+    orcid: 0000-0001-6699-7040
     affiliation: 1
 affiliations:
  - name: Leipzig Institut für Meteorologie, Leipzig Universität, Leipzig, Germany
@@ -32,9 +35,11 @@ Although the Cloudnetpy algorithm supports a rich number of remote sensing instr
 +:====================+:=======================:+:=====================:+
 | RADAR               | `KAZR ARSCR 1kollias`   | c0, c1                |
 +---------------------+-------------------------+-----------------------+
-|                     |  KAZR CRF GE            | a1                    |
+|                     | `KAZR CORGE`            | a1                    |
 +---------------------+-------------------------+-----------------------+
-|                     |  MWACR CFR              | a1                    |
+|                     |  `KAZR CRF GE`          | a1                    |
++---------------------+-------------------------+-----------------------+
+|                     |  `MWACR CFR`            | a1                    |
 +---------------------+-------------------------+-----------------------+
 | LIDAR               | `CEIL10m`               | b1                    |
 +---------------------+-------------------------+-----------------------+
@@ -54,6 +59,6 @@ CloudnetTools.jl has been primary developed and applied to Arctic cloud observat
 
 # Acknowledgements
 This work was supported by the _Deutsche Forschungsgemeinschaft_ (DFG) funded Transregio-project TR-172 "Arctic Amplification (AC)3" (grant 268020496), sub-project B07 (grand ). 
-The Author would like to thank to ACTRIS for making the Cloudnetpy code open source, and the atmospheric radiation measurement (ARM) user facility, for openly provide the valuable data. 
+The Author would like to thank to ACTRIS for making the Cloudnetpy code open source, and the atmospheric radiation measurement (ARM) user facility, for providing the valuable data. 
 
 # References
