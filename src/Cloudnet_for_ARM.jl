@@ -135,7 +135,7 @@ function converter(the_key::Symbol, arm_filenc::String, out_path::String; extra_
             ARM.hsrl2nc
         elseif tmp=="ceil10m"
             ARM.lidar2nc
-        elseif tmp ∉ ("mwr", "kazr", "mwacr", "interpolatedsonde", "arsclkazr1kollias")
+        elseif the_key ∈ (:lidar, :ceilometer)
             @info "Type of $(tmp) is neither CEIL10m nor HSRL! using default as CEIL10m. Output file can be compromised!"
             ARM.lidar2nc
         end

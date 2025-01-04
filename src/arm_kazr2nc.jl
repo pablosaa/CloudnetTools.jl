@@ -42,7 +42,8 @@ function kazr2nc(radar::Dict, output_path::String; extra_params=Dict())
 
     time = radar[:time];
     file_time = datetime24hours(time)
-        #hour.(time) + minute.(time)/60 + second.(time)/3600;
+    ntime = length(file_time)
+    
     arm_year  = year(time[1])
     arm_month = month(time[1])
     arm_day   = day(time[1])
@@ -61,13 +62,13 @@ function kazr2nc(radar::Dict, output_path::String; extra_params=Dict())
     # the following four variables are not present in the ARSCL data files:
     # nyquist velocity [m/s] 
     nyquist_velocity = get_parameter(radar, :nyquist_velocity, extra_params, default=-999)
-    #haskey(radar, :nyquist_velocity) ? radar[:nyquist_velocity][1] : -999;
+
     # [counts] number of fast fourier transform
     num_nfft = haskey(radar, :fft_len) ? radar[:fft_len][1] : -999;
     # [Hz] pulse repetition frequency
     num_prf  = haskey(radar, :prf) ? radar[:prf][1] : -999;
     # [counts] number of spectral average ((10-0)/0.001
-    num_nave = haskey(radar, :number_spectral_ave) ? radar[:number_spectral_ave][1] : 9999.;
+    num_nave = haskey(radar, :number_spectral_ave) ? radar[:number_spectral_ave][1] : 9999;
 
     # Looking for information about instrument site or location/campaign
     SITE = get_SITE(radar, extra_params, inkeys=(:site, :campaign, :location))
@@ -168,8 +169,8 @@ function kazr2nc(radar::Dict, output_path::String; extra_params=Dict())
     ))
 
     nctime = defVar(ds,"time", Float32, ("time",), attrib = OrderedDict(
-        "units"                     => "decimal hours since midnight",
-        "long_name"                 => "Time UTC",
+        "units"                     => "Time UTC",
+        "long_name"                 => "decimal hours since midnight",
         "standard_name"             => "time",
     ))
 
@@ -194,7 +195,7 @@ function kazr2nc(radar::Dict, output_path::String; extra_params=Dict())
         "units"                     => "1", #"count",
     ))
 
-    ncprf = defVar(ds,"prf", Int32, (), attrib = OrderedDict(
+    ncprf = defVar(ds,"prf", Float32, (), attrib = OrderedDict(
         "long_name"                 => "Pulse Repetition Frequency",
         "units"                     => "Hz",
     ))
@@ -234,7 +235,7 @@ function kazr2nc(radar::Dict, output_path::String; extra_params=Dict())
 
     
     # Define variables
-
+    nctime[1:ntime] = file_time;
     ncZe[:] = radar[:Ze];
     ncv[:] = radar[:MDV];
     ncwidth[:] = radar[:SPW];
@@ -243,16 +244,16 @@ function kazr2nc(radar::Dict, output_path::String; extra_params=Dict())
     nclatitude[:] = get_parameter(radar, :lat, extra_params, lims=(-90, 90))
     nclongitude[:] = get_parameter(radar, :lon, extra_params, lims=(-180, 360))
     ncaltitude[:] = get_parameter(radar, :alt, extra_params, default=0)
-    nctime[:] = file_time;
+
     ncrange[:] = radar[:height];
     ncradar_frequency[:] = radar_frequency;
-    ncnyquist_velocity[:] = nyquist_velocity;
+    ncnyquist_velocity[:] = nyquist_velocity[1];
     ncnfft[:] = num_nfft;
     ncprf[:] = num_prf;
     ncnave[:] = num_nave;
     nczrg[:] = nzrg;
     ncrg0[:] = 5;
-    ncdrg[:] = haskey(radar,:drg) ? radar[:drg][1] : 30;
+    ncdrg[:] = get_parameter(radar, :drg, extra_params, default=30) |> first
 
     close(ds)
 
