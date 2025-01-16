@@ -138,12 +138,12 @@ julia> nctime = convert_time2DateTime(year, month, day, hour_of_day)
 julia> nctime = convert_time2DateTime(nc; time_var="other_time_variable")
 ```
 WHERE:
-* year, month and day -> Float32
-* hour_of_day -> Vector{Float32} with fraction of day [0 to 24]
-* nc::NCDataset identifier for the netCDF file to read.
-* time_var::String (Optional) given the netCDF variable to read instead.
+* year, month and day -> ```Float32```
+* hour_of_day -> ```Vector{Float32}``` with fraction of day [0 to 24]
+* ```nc::NCDataset``` identifier for the netCDF file to read.
+* ```time_var::String``` (Optional) given the netCDF variable to read instead.
 RETURN:
-* nctime::DateTime for ::Vector{DateTime}
+* ```nctime::DateTime``` for ```::Vector{DateTime}```
 
 EXAMPLE:
 ```julia-repl
@@ -192,16 +192,16 @@ julia> Xt = ∫fdh(Xi::Matrix, H::Vector)
 julia> Xt = ∫fdh(Xi::Matrix, H::Vector; h₀=CBH, hₜ=CBT)
 ```
 WHERE:
-* Xi::Matrix - to integrate over 1st dimension,
-* H::Vector  - with the integrating variable, same length as Xi 1st dimension,
-* h₀::Vector - (Optional) with low limit height to integrate from,
-* hₜ::Vector - (Opitonal) with top limit height to integrate to.
+* ```Xi::Matrix``` - to integrate over 1st dimension,
+* ```H::Vector```  - with the integrating variable, same length as Xi 1st dimension,
+* ```h₀::Vector``` - (Optional) with low limit height to integrate from,
+* ```hₜ::Vector``` - (Opitonal) with top limit height to integrate to.
 
 If neither h₀ nor hₜ are provided, then the integral is performed over whole Xi 1st
 dimension. Note that h₀ and hₜ, if provided, need to have same length as Xi 2nd dimension.
 
 OUTPUT:
-* Xt::Vector - with the integrated value, same length as Xi 2nd dimension.
+* ```Xt::Vector``` - with the integrated value, same length as Xi 2nd dimension.
 
 Part of ```CloudnetTools.jl```, see LICENSE.TXT
 """
@@ -353,17 +353,17 @@ julia> CBH, CTH = estimate_cloud_layers(clnet; lidar=ceilometer, nlayers=2)
 julia> CBH, CTH, CLB = estimate_cloud_layers(clnet; nlayers=2, liquid_base=true)
 ```
 WHERE:
-* clnet::Dict is the Cloudnet data from categorize and classification output files,
-* lidar::Dict (Optional) the lidar data with keys :time and :CBH [m]
-* nlayers::Int (Optional) number of cloud layer to try to detect, default 3
-* alttime::Vector{DateTime} (Optional) to which the ouput will be fit, defualt none
-* smooth\\_classify::Bool (Optional) to smooth the 2D CLASSIFICATION to avoid spikes.
-* liquid\\_base::Bool (Optional) if true then add extra output with liquid cloud base. 
+* ```clnet::Dict``` is the Cloudnet data from categorize and classification output files,
+* ```lidar::Dict``` (Optional) the lidar data with keys :time and :CBH [m]
+* ```nlayers::Int``` (Optional) number of cloud layer to try to detect, default 3
+* ```alttime::Vector{DateTime}``` (Optional) to which the ouput will be fit, defualt none
+* ```smooth_classify::Bool``` (Optional) to smooth the 2D CLASSIFICATION to avoid spikes.
+* ```liquid_base::Bool``` (Optional) if true then add extra output with liquid cloud base. 
 
 OUTPUT:
-* CBH::Matrix(ntime, nlayers) with cloud base height in m
-* CTH::Matrix(ntime, nlayers) with cloud top height in m
-* CLB::Matrix(ntime, nlayers) Optional if input flag 'liquid_base' is true.
+* ```CBH::Matrix(ntime, nlayers)``` with cloud base height in m
+* ```CTH::Matrix(ntime, nlayers)``` with cloud top height in m
+* ```CLB::Matrix(ntime, nlayers)``` Optional if input flag 'liquid_base' is true.
 
 NOTE: be sure clnet[:height] and lidar[:CBH] have the same units, e.g. m
 
@@ -467,12 +467,12 @@ USAGE:
 julia> var_out = Interpolate2Cloudnet(clnet, time_in, var_in)
 ```
 WHERE:
-* clnet::Dict with cloudnet output,
-* time\\_in::Vector{DateTime} with the time of variable to interpolate,
-* var\\_in::Vector{Any} with the variable to interpolate.
+* ```clnet::Dict``` with cloudnet output,
+* ```time_in::Vector{DateTime}``` with the time of variable to interpolate,
+* ```var_in::Vector{Any}``` with the variable to interpolate.
 
 OUTPUT:
-* var\\_out::Vector{Any} with the interpolated variable at cloudnet time.
+* ```var_out::Vector{Any}``` with the interpolated variable at cloudnet time.
 
 Part of ```CloudnetTools.jl```, see LICENSE.TXT
 """
@@ -508,13 +508,13 @@ julia> T_h = cloud_temperature(data, H)
 julia> T_h = cloud_temperature(data, H, clnet=clnet, var=:Temp)
 ```
 WHERE:
-* data::Dict() data with variable keys :time and :T for temperature, (can be clnet),
-* H::Array{T}(time, layers) with the altitudes at which the temperature is estimated,
-* clnet::Dict (Optional) when data is not same resolution, interpolate to clnet[:time],
-* var::Symbol (Optional) variable from data to be used, default :T
+* ```data::Dict()``` data with variable keys :time and :T for temperature, (can be clnet),
+* ```H::Array{T}(time, layers)``` with the altitudes at which the temperature is estimated,
+* ```clnet::Dict``` (Optional) when data is not same resolution, interpolate to clnet[:time],
+* ```var::Symbol``` (Optional) variable from data to be used, default :T
 
 Input Dict data must have variables with key :T for temperature and :height.
-The output will have the same units as data[:T] and same dimentions as H.
+The output will have the same units as ```data[:T]``` and same dimentions as H.
 
 NOTE: be sure H and data[:height] have the same units, e.g. m
 

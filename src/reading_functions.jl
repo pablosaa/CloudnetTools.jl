@@ -4,6 +4,36 @@ File contains reading functions for the CloudnetTools.jl package
 ********************************************************************
 =#
 
+# **************************************************************
+# Auxiliary function to retrieve NCDataset variables based on dimension.
+"""
+Function to retrieve netCDF variable considering variable dimensions.
+The function will return then either Matrix, Vector, or scalar.
+
+```julia-repl
+julia> var = getNCvariable(nc::Dataset, varname::String)
+```
+WHERE:
+* ```nc::Dataset``` the netCDF to read pointer,
+* ```varname::String``` the variable name to be read.
+OUTPUT:
+* ```var::Union{Matrix, Vector, Number}``` the retrieved Matrix, Vector, or Scalar from netCDF.
+
+"""
+function getNCvariable(nc::NCDataset, var::String)::Union{Matrix, Vector, Number}
+    ndx = ndims(nc[var])
+    data = if ndx==2
+        nc[var][:,:]
+    elseif ndx==1
+        nc[var][:]
+    else
+        nc[var][]
+    end
+
+    return data
+end
+# ----/
+
 # ***************************************************************
 # Read Cloudnet Ice water content IWC file
 """
@@ -13,12 +43,12 @@ File contains reading functions for the CloudnetTools.jl package
 julia> iwc = readIWCFile(nfile::String; inc_rain=false, apply_flag=false)
 ```
 WHERE:
-* nfile::String Full paht to Cloudnet IWC file,
-* iwc::Dict Data containing :time, :height, :iwc, :flag
+* ```nfile::String``` Full paht to Cloudnet IWC file,
+* ```iwc::Dict``` Data containing :time, :height, :iwc, :flag
 
 OPTIONAL:
-* inc\\_rain::Bool Whether or not use the IWC Cloudnet variable iwc_inc_rain (Default true),
-* apply\\_flag::Bool Filter flag values which are not 1,2,3 (Dafault true)
+* ```inc_rain::Bool``` Whether or not use the IWC Cloudnet variable iwc_inc_rain (Default true),
+* ```apply_flag::Bool``` Filter flag values which are not 1,2,3 (Dafault true)
 
 To have the definition of the flag values, see Metadata in IWC Cloudnet file.
 
@@ -43,7 +73,8 @@ function readIWCFile(nfile::String; inc_rain=true, apply_flag=true)
         for inkey ∈ keys(vars_categorize)
             x = vars_categorize[inkey]
 
-            tmp = nc[x][:,:]
+            tmp = getNCvariable(nc, x)
+            
             if haskey(nc[x].attrib, "missing_value")
                 miss_val = nc[x].attrib["missing_value"]
             elseif haskey(nc[x].attrib, "_FillValue")
@@ -92,8 +123,8 @@ WHERE:
 * iwc::Dict Data containing :time, :height, :lwc, :LWP, :flag
 
 OPTIONAL:
-* inc\\_rain::Bool Whether or not use the IWC Cloudnet variable iwc_inc_rain (Default true),
-* apply\\_flag::Bool Filter flag values which are not 1,2,3 (Dafault true)
+* ```inc_rain::Bool``` Whether or not use the IWC Cloudnet variable iwc_inc_rain (Default true),
+* ```apply_flag::Bool``` Filter flag values which are not 1,2,3 (Dafault true)
 
 To have the definition of the flag values, see Metadata in LWC Cloudnet file.
 
@@ -119,7 +150,8 @@ function readLWCFile(nfile::String; apply_flag=true)
         for inkey ∈ keys(vars_categorize)
             x = vars_categorize[inkey]
 
-            tmp = nc[x][:,:]
+            tmp = getNCvariable(nc, x)
+            
             if haskey(nc[x].attrib, "missing_value")
                 miss_val = nc[x].attrib["missing_value"]
             elseif haskey(nc[x].attrib, "_FillValue")
@@ -158,10 +190,10 @@ julia> classi = readCLNFile(catfile; modelreso=false)
 julia> classi = readCLNFile(catfile; altfile="cloudnet_classify.nc")
 ```
 WHERE:
-* catfile::String full path to cloudnet categorization file,
-* modelreso::Bool (Optional) if true, the model variables are
+* ```catfile::String``` full path to cloudnet categorization file,
+* ```modelreso::Bool``` (Optional) if true, the model variables are
 interpolated from hourly resolution to Cloudnet resolution.
-* altfile::String (Optional) alternative classification file.
+* ```altfile::String``` (Optional) alternative classification file.
 
 NOTE: ```catfile``` needs to have the "categorize" in string, then that is
 automatically converted to classification file by replacing "categorize"->"classification".
@@ -262,7 +294,7 @@ function readCLNFile(nfile::String; modelreso=false, altfile=nothing)
             #x = vars_categorize[inkey]
             !haskey(nc, x) && continue
 
-            tmp = nc[x][:,:]
+            tmp = getNCvariable(nc, x)
             
             if haskey(nc[x].attrib, "missing_value")
                 miss_val = nc[x].attrib["missing_value"]
@@ -361,14 +393,14 @@ julia> reff = readReffFile(infile)
 julia> reff = readReffFile(infile; altfile="ier_file.nc")
 ```
 WHERE:
-* infile::String Input file for Der or Ier cloudnet file
-* altfile::String (Optional) if String given should be a Der file of Ier file
+* ```infile::String``` Input file for Der or Ier cloudnet file
+* ```altfile::String``` (Optional) if String given should be a Der file of Ier file
 
 For legacy Cloudnet files, the reff_Fischer and reff_ice files needs to be
 explicitly assigned to 'infile' and 'altfile', respectively.
 
 OUTPUT:
-* reff::Dict Dictionary contaning the data collected from both files Der and Ier.
+* ```reff::Dict``` Dictionary contaning the data collected from both files Der and Ier.
 
 Tha variables loaded from the Cloudnet NetCDF files by default are:
 ```julia-repl
@@ -427,7 +459,7 @@ function readReffFile(nfile::String; altfile::String="")
             !haskey(nc, x) && continue
             
             tmp = if eltype(nc[x]) <: Integer
-                nc[x][:,:]
+                getNCvariable(nc, x)
             else
                 nomissing(nc[x][:,:], NaN32)
             end
