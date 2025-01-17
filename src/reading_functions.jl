@@ -458,10 +458,8 @@ function readReffFile(nfile::String; altfile::String="")
             
             !haskey(nc, x) && continue
             
-            tmp = if eltype(nc[x]) <: Integer
-                getNCvariable(nc, x)
-            else
-                nomissing(nc[x][:,:], NaN32)
+            tmp = let xout=getNCvariable(nc, x)
+                eltype(nc[x]) <: Integer ? xout : nomissing(xout, NaN32)
             end
             
             if haskey(nc[x].attrib, "missing_value")
@@ -504,10 +502,8 @@ function readReffFile(nfile::String; altfile::String="")
 
             !haskey(nc, x) && continue
             
-            tmp = if eltype(nc[x]) <: Integer
-                nc[x][:,:]
-            else
-                nomissing(nc[x][:,:], NaN32)
+            tmp = let xout=getNCvariable(nc, x)
+                eltype(nc[x]) <: Integer ? xout : nomissing(xout, NaN32)
             end
             
             var_output[inkey] = tmp
