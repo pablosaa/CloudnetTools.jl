@@ -47,7 +47,7 @@ WHERE:
 * ```iwc::Dict``` Data containing :time, :height, :iwc, :flag
 
 OPTIONAL:
-* ```inc_rain::Bool``` Whether or not use the IWC Cloudnet variable iwc_inc_rain (Default true),
+* ```inc_rain::Bool``` Whether or not use the IWC Cloudnet variable ```iwc_inc_rain``` (Default true),
 * ```apply_flag::Bool``` Filter flag values which are not 1,2,3 (Dafault true)
 
 To have the definition of the flag values, see Metadata in IWC Cloudnet file.
@@ -83,29 +83,22 @@ function readIWCFile(nfile::String; inc_rain=true, apply_flag=true)
                 miss_val = 9.96921f36
             end
 
-            # Cleaning missing values from variables :
-            eltype(tmp) <: AbstractFloat && (tmp[tmp .≈ miss_val] .= NaN)
+            # Cleaning missing values from variables : 
+            if eltype(tmp) <: Union{Missing, AbstractFloat}
+                tmp = nomissing(tmp, NaN32)
+            end
             
             var_output[inkey] = tmp
         end
 
     end
 
-    # Adding computed variables:
-    # integration of lwc only for pixels with flag=1, 2 or 3:
+    # Checking variable flag:
+    # in case the pixels are not flagged=1, 2 or 3: then is converted to NaN32.
     if apply_flag
         idxnan = findall(x->x ∉ (1:3), var_output[:flag])
         var_output[:iwc][idxnan] .= NaN32
     end
-    
-    # integration of iwc only for pixels with flag=1 or 2:
-    # Cloudnetpy units iwc [kg m⁻³] and height [m]
-    ##var_output[:IWP] = let tmp = 1f3var_output[:iwc]
-    ##
-    ##    @. tmp[!(0 < var_output[:flag] < 3)] = NaN
-    ##    # IWP [g m⁻²]
-    ##    ∫fdh(tmp, var_output[:height])
-    ##end
     
     return var_output
 end
@@ -120,10 +113,9 @@ julia> lwc = readLWCFile(nfile::String; apply_flag=false)
 ```
 WHERE:
 * nfile::String Full paht to Cloudnet LWC file,
-* iwc::Dict Data containing :time, :height, :lwc, :LWP, :flag
+* lwc::Dict Data containing :time, :height, :lwc, :LWP, :flag
 
 OPTIONAL:
-* ```inc_rain::Bool``` Whether or not use the IWC Cloudnet variable iwc_inc_rain (Default true),
 * ```apply_flag::Bool``` Filter flag values which are not 1,2,3 (Dafault true)
 
 To have the definition of the flag values, see Metadata in LWC Cloudnet file.
@@ -161,7 +153,11 @@ function readLWCFile(nfile::String; apply_flag=true)
             end
 
             # Cleaning missing values from variables :
-            eltype(tmp) <: AbstractFloat && (tmp[tmp .≈ miss_val] .= NaN)
+            #eltype(tmp) <: AbstractFloat && (tmp[tmp .≈ miss_val] .= NaN)
+            if eltype(tmp) <: Union{Missing, AbstractFloat}
+                tmp = nomissing(tmp, NaN32)
+            end
+
             
             var_output[inkey] = tmp
         end
@@ -461,18 +457,6 @@ function readReffFile(nfile::String; altfile::String="")
             tmp = let xout=getNCvariable(nc, x)
                 eltype(nc[x]) <: Integer ? xout : nomissing(xout, NaN32)
             end
-            
-            if haskey(nc[x].attrib, "missing_value")
-                miss_val = nc[x].attrib["missing_value"]
-            elseif haskey(nc[x].attrib, "_FillValue")
-                miss_val = nc[x].attrib["_FillValue"]
-            else
-                miss_val = 9.96921f36
-            end
-            
-            # Cleaning missing values from variables :
-            #eltype(tmp) <: Union{Missing, AbstractFloat} && (tmp[tmp .≈ miss_val] .= NaN32)
-            #eltype(tmp) <: AbstractFloat && (tmp[tmp .≈ miss_val] .= NaN32)
             
             var_output[inkey] = tmp
         end

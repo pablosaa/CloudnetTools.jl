@@ -8,11 +8,12 @@ julia> kazr2nc(list_files, output_path)
 julia> kazr2nc(data, output_path)
 ```
 WHERE:
-* radar\\_file::String full path to ARM radar netCDF file,
-* output\\_path::Stirng path to put the converted file,
-* list\\_files::Vector{String} several ARM files to be concatenated,
-* data::Dict dataset readed by ARMtools.getKAZRData(armfile)
-* extra\\_params::Dict (Optional) dictionary with alternative parameter to pass.
+* ```radar_file::String``` full path to ARM radar netCDF file,
+* ```output_path::String``` path to put the converted file,
+* ```list_files::Vector{String}``` several ARM files to be concatenated,
+* ```data::Dict``` dataset readed by ARMtools.getKAZRData(armfile)
+* ```extra_params::Dict``` (Optional) dictionary with alternative parameter to pass.
+* ```rng0::Union{Bool, Float}``` (Optional) extrapolate radar data to rng0, default false.
 
 Part of ```CloudnetTools.jl```, see LICENSE.TXT
 """
@@ -35,7 +36,7 @@ function kazr2nc(radar_file::Vector{String}, output_path::String; extra_params=D
     return kazr2nc(radar, output_path, extra_params=extra_params)
 end
 
-function kazr2nc(radar::Dict, output_path::String; extra_params=Dict())
+function kazr2nc(radar::Dict, output_path::String; extra_params=Dict(), rng0=false)
 
     # Script to adapt ARM KAZR radar to netCDF input for cloudnetpy
     # 
@@ -57,8 +58,41 @@ function kazr2nc(radar::Dict, output_path::String; extra_params=Dict())
         typeof(x) <: Number ? x : NaN32
     end
 
+    # Getting the range resolution
+    δrg = let xrg=radar[:height][1:10] |> diff |> first
+        get_parameter(radar, :drg, extra_params, default=xrg) |> first
+    end
+
+    #=
+    Checking whether the optional parameter rng0 has been given:
+    By default rng0=false thus no extrapolation performed,
+    if rng0=true then radar range is extrapolated to δrng/2,
+    otherwise if rng0 is a Float32, then is extrapolated to rng0
+    =#
+    if typeof(rng0)<:Union{Bool, AbstractFloat}
+        let rng_first = rng0 && δrg/2
+            vh = radar[:height]
+            vt = file_time
+            ext_h = range(radar[:height][1]-δrg, step=-δrg, stop=rng_first) |> reverse
+            ext_t = file_time
+            radar[:height] = vcat(ext_h, vh)
+            
+            for (k,v) ∈ radar
+                !(typeof(v)<:Matrix) && continue
+
+                # Interpolating variable v
+                ipt = interpolate((vh,vt), v, Gridded(Linear()) )
+                ept = extrapolate(ipt, Linear() )
+                ext_v = [ept(h, t) for h in ext_h, t in ext_t]
+                radar[k] = vcat(ext_v, v)
+            end
+        end
+        
+    end
+    
     nzrg = length(radar[:height]);  # Number of range gates
 
+    
     # the following four variables are not present in the ARSCL data files:
     # nyquist velocity [m/s] 
     nyquist_velocity = get_parameter(radar, :nyquist_velocity, extra_params, default=-999)
@@ -220,19 +254,12 @@ function kazr2nc(radar::Dict, output_path::String; extra_params=Dict())
         "unit"                      => "m",
     ))
 
-
-    if haskey(radar, :RR)
-        ncrainrate = defVar(ds,"rainfall_rate", Float32, ("time",), attrib = OrderedDict(
-            "units"                     => "m s-1",
-            "long_name"                 => "Rainfall rate",
-            "standard_name"             => "rainfall_rate",
-            "comment"                   => "Fill values denote rain with undefined intensity.",
-        ))
-
-        # filling rainrate_fall and converting from mm h⁻¹ to m s⁻¹:
-        ncrainrate[:] = radar[:RR]/3.6f6
-    end
-
+    ncrainrate = defVar(ds,"rainfall_rate", Float32, ("time",), attrib = OrderedDict(
+        "units"                     => "m s-1",
+        "long_name"                 => "Rainfall rate",
+        "standard_name"             => "rainfall_rate",
+        "comment"                   => "Fill values denote rain with undefined intensity.",
+    ))
     
     # Define variables
     nctime[1:ntime] = file_time;
@@ -253,8 +280,16 @@ function kazr2nc(radar::Dict, output_path::String; extra_params=Dict())
     ncnave[:] = num_nave;
     nczrg[:] = nzrg;
     ncrg0[:] = 5;
-    ncdrg[:] = get_parameter(radar, :drg, extra_params, default=30) |> first
+    ncdrg[:] = δrg;
 
+    # filling rainrate_fall and converting from mm h⁻¹ to m s⁻¹:
+    if haskey(radar, :RR)
+        ncrainrate[:] = radar[:RR]/3.6f6
+    else
+        ncrainrate[:] .= NaN32
+    end
+
+    
     close(ds)
 
     return ARM_OUTFILE

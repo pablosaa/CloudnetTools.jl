@@ -1,3 +1,24 @@
+"""
+Function to convert ARM lidar/ceilometer file to Cloudnet lidar input file.
+USAGE:
+```julia-repl
+julia> lidar2nc(lidar_file, output_path)
+julia> lidar2nc(lidar_file, output_path; extra_params=extras)
+julia> lidar2nc(list_files, output_path)
+julia> lidar2nc(data, output_path)
+```
+WHERE:
+* ```lidar_file::String``` full path to ARM lidar netCDF file,
+* ```output_path::String``` path to put the converted file,
+* ```list_files::Vector{String}``` several ARM files to be concatenated,
+* ```data::Dict``` dataset readed by ARMtools.getLidarData(armfile) or getCeil10mData()
+* ```extra_params::Dict``` (Optional) dictionary with alternative parameter to pass.
+
+The ```extra_params::Dict``` could be for example values not present in the netCDF file or values present but need to be adjusted like Latitude and Longitude for measurements in a Research Vessel, e.g. ```Dict(:SITE=>"Polarstern", :altitude_m=>10f0, :tilt_angle=>5f0, :λ_nm=>910)```, etc.
+
+Part of ```CloudnetTools.jl```, see LICENSE.TXT
+"""
+
 function lidar2nc(lidar_file::String, output_path::String; extra_params=Dict{Symbol,Any}())
     if !isfile(lidar_file)
         error("$lidar_file does not exist!")
@@ -16,7 +37,7 @@ function lidar2nc(lidar_file::Vector{String}, output_path::String; extra_params=
     return lidar2nc(lidar, output_path, extra_params=extra_params)
 end
 function lidar2nc(lidar::Dict, output_path::String; extra_params=Dict{Symbol,Any}())
-                  #SITE="not-defined", altitude_m=0f0, tilt_angle=0f0, λ_nm=910)
+                  
 
     
     time = lidar[:time];

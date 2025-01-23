@@ -1,17 +1,45 @@
-function hsrl2nc(lidar_file::String, output_path::String; extra_params=Dict())
-                 #SITE="not-defined", altitude_m=0f0, tilt_angle=0f0, λ_nm=510)
+"""
+Function to convert ARM HSRL file to Cloudnet lidar input file.
+USAGE:
+```julia-repl
+julia> hsrl2nc(hsrl_lidar_file, output_path)
+julia> hsrl2nc(hsrl_lidar_file, output_path; extra_params=extras)
+julia> hsrl2nc(list_files, output_path)
+julia> hsrl2nc(data, output_path)
+```
+WHERE:
+* ```hsrl_lidar_file::String``` full path to ARM HSRL netCDF file,
+* ```output_path::String``` path to put the converted file,
+* ```list_files::Vector{String}``` several ARM files to be concatenated,
+* ```data::Dict``` dataset readed by ARMtools.getLidarData(armfile) or getHSRLData()
+* ```extra_params::Dict``` (Optional) dictionary with alternative parameter to pass.
 
-    # script to read the ARM NSA HSRL data to convert to CloudNet lidar input
-    # Part of (AC)3 B07 project.
-    
-    # Reading input file:
+The ```extra_params::Dict``` could be for example values not present in the netCDF file or values present but need to be adjusted like Latitude and Longitude for measurements in a Research Vessel, e.g. ```Dict(:SITE=>"Polarstern", :altitude_m=>10f0, :tilt_angle=>5f0, :λ_nm=>910)```, etc.
+
+Part of ```CloudnetTools.jl```, see LICENSE.TXT
+"""
+function hsrl2nc(lidar_file::String, output_path::String; extra_params=Dict{Symbol,Any}())
     if !isfile(lidar_file)
         error("$lidar_file does not exist!")
     end
-    
-    # reading data:
-    lidar = ARMtools.getLidarData(lidar_file)
 
+    # Reading input ARM netCDF file:
+    lidar = ARMtools.getHSRLData(lidar_file)
+
+    return hsrl2nc(lidar, output_path, extra_params=extra_params)
+end
+function hsrl2nc(lidar_file::Vector{String}, output_path::String; extra_params=Dict{Symbol,Any}())
+
+    # Reading input ARM netCDF file:
+    lidar = ARMtools.getHSRLrData(lidar_file)
+
+    return hsrl2nc(lidar, output_path, extra_params=extra_params)
+end
+function hsrl2nc(lidar::Dict, output_path::String; extra_params=Dict{Symbol,Any}())
+                  
+    # script to read the ARM NSA HSRL data to convert to CloudNet lidar input
+    # Part of (AC)3 B07 project.
+    
     arm_year = year(lidar[:time][1])
     arm_month = month(lidar[:time][1])
     arm_day = day(lidar[:time][1])
@@ -262,7 +290,7 @@ function hsrl2nc(lidar_file::String, output_path::String; extra_params=Dict())
     ncrange[:] = range;
     nctime[:] = file_time;
     nctilt_angle[:] = first(tilt_angle);
-    ncheight[:] = altitude_m .+ range; #... PSG to be fixed
+    ncheight[:] = altitude_m .+ range;
     ncwavelength[:] = λ_nm;
     ncaltitude[:] = altitude_m
     close(ds)
