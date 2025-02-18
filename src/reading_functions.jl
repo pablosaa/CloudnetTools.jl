@@ -30,7 +30,62 @@ function getNCvariable(nc::NCDataset, var::String)::Union{Matrix, Vector, Number
         nc[var][]
     end
 
+    # Cleaning the data from missing_values, _FillValues, NaN:
+    miss_val = nothing
+    if eltype(data) <: Union{Missing, AbstractFloat} && isa(data, AbstractArray)
+        if haskey(nc[var].attrib, "missing_value") || haskey(nc[var].attrib, "_FillValue")
+            data = nomissing(data, NaN32) #miss_val = nc[var].attrib["missing_value"]
+
+            #elseif haskey(nc[var].attrib, "_FillValue")
+            #    miss_val = nc[var].attrib["_FillValue"]
+
+        else
+            miss_val = ifelse(eltype(data) <: AbstractFloat, 9.96921e36, nothing)
+        end
+    end
+
+    # Cleaning missing values from variables :
+    if !isnothing(miss_val) && isa(data, AbstractArray)
+        data[data .≈ miss_val] .= NaN32
+        !contains(var, "height") && @warn("No 'missing_value' nor '_FillValue' attribute found in variable '$(var)'. Default used: $(miss_val)")                
+    end
+    
+    #if eltype(data) <: Union{Missing, AbstractFloat} && isa(data, AbstractArray)
+    #    data = nomissing(data, NaN32)
+
+    #elseif !isnothing(miss_val) && isa(data, AbstractArray)
+        
+    #end
+
     return data
+end
+# ----/
+
+# **************************************************************
+"""
+Function the retrieve the units of netCDF variable:
+```julia-repl
+julia> units = getNCunits(nc::Dataset, varname::String)
+```
+WHERE:
+* ```nc::Dataset``` the netCDF to read pointer,
+* ```varname::String``` the variable name to be read.
+OUTPUT:
+* ```units::String``` the netCDF variable's unit, if not existing returns "-".
+
+"""
+function getNCunits(nc::NCDataset, var::String)::String
+
+    # Reading the Units of variables:
+    einheit = if haskey(nc[var].attrib, "units")
+        nc[var].attrib["units"] |> x-> x=="1" ? "-" : x
+    else
+        "-"
+    end
+
+    einheit = replace(einheit, "-1"=>"⁻¹", "-2"=>"⁻²", "-3"=>"⁻³")
+    
+    return einheit
 end
 # ----/
 
@@ -40,7 +95,7 @@ end
 # Read Cloudnet Ice water content IWC file
 
 ```julia-repl
-julia> iwc = readIWCFile(nfile::String; inc_rain=false, apply_flag=false)
+julia> iwc = readIWCFile(nfile::String; inc_rain=false, apply_flag=[1:3...])
 ```
 WHERE:
 * ```nfile::String``` Full paht to Cloudnet IWC file,
@@ -48,13 +103,13 @@ WHERE:
 
 OPTIONAL:
 * ```inc_rain::Bool``` Whether or not use the IWC Cloudnet variable ```iwc_inc_rain``` (Default true),
-* ```apply_flag::Bool``` Filter flag values which are not 1,2,3 (Dafault true)
+* ```apply_flag::Vector{Int}``` This vector indicates flagged values to be included (Default include all)
 
 To have the definition of the flag values, see Metadata in IWC Cloudnet file.
 
 Part of ```CloudnetTools.jl```, see LICENSE.TXT
 """
-function readIWCFile(nfile::String; inc_rain=true, apply_flag=true)
+function readIWCFile(nfile::String; inc_rain=true, apply_flag::Vector{Int}=Int[])
 
     @assert isfile(nfile) error("$nfile cannot be found!")
 
@@ -69,34 +124,21 @@ function readIWCFile(nfile::String; inc_rain=true, apply_flag=true)
 
     NCDataset(nfile; format=:netcdf4_classic) do nc
         var_output[:time] = convert_time2DateTime(nc)
+        var_output[:units] = (time="Time UTC [hour]",)
+        
+        for (inkey, x) ∈ vars_categorize
 
-        for inkey ∈ keys(vars_categorize)
-            x = vars_categorize[inkey]
-
-            tmp = getNCvariable(nc, x)
-            
-            if haskey(nc[x].attrib, "missing_value")
-                miss_val = nc[x].attrib["missing_value"]
-            elseif haskey(nc[x].attrib, "_FillValue")
-                miss_val = nc[x].attrib["_FillValue"]
-            else
-                miss_val = 9.96921f36
-            end
-
-            # Cleaning missing values from variables : 
-            if eltype(tmp) <: Union{Missing, AbstractFloat}
-                tmp = nomissing(tmp, NaN32)
-            end
-            
-            var_output[inkey] = tmp
+            var_output[inkey] = getNCvariable(nc, x)
+            # Adding NamedTuple :units e.g. (time="UTC", (:lwc=>"kg m-3",)...) --> (time="UTC", lwc="kg m-3")
+            var_output[:units] = (; var_output[:units]..., (inkey=>getNCunits(nc, x),)... )
         end
 
     end
 
     # Checking variable flag:
-    # in case the pixels are not flagged=1, 2 or 3: then is converted to NaN32.
-    if apply_flag
-        idxnan = findall(x->x ∉ (1:3), var_output[:flag])
+    # Only pass values that are indicated by apply_flag, otherwise values are converted to NaN32.
+    if !isempty(apply_flag)
+        idxnan = findall(x->x ∉ apply_flag, var_output[:flag])
         var_output[:iwc][idxnan] .= NaN32
     end
     
@@ -109,20 +151,20 @@ end
 """
 # Read Liquid water content LWC file
 ```julia-repl
-julia> lwc = readLWCFile(nfile::String; apply_flag=false)
+julia> lwc = readLWCFile(nfile::String; apply_flag=[1,3,4])
 ```
 WHERE:
 * nfile::String Full paht to Cloudnet LWC file,
 * lwc::Dict Data containing :time, :height, :lwc, :LWP, :flag
 
 OPTIONAL:
-* ```apply_flag::Bool``` Filter flag values which are not 1,2,3 (Dafault true)
+* ```apply_flag::Vector{Int}``` This vector indicates flagged values to be included (Default include all)
 
 To have the definition of the flag values, see Metadata in LWC Cloudnet file.
 
 Part of ```CloudnetTools.jl```, see LICENSE.TXT
 """
-function readLWCFile(nfile::String; apply_flag=true)
+function readLWCFile(nfile::String; apply_flag::Vector{Int}=Int[])
 
     @assert isfile(nfile) error("$nfile cannot be found!")
 
@@ -136,38 +178,24 @@ function readLWCFile(nfile::String; apply_flag=true)
     # Defining Output varaible:
     var_output = Dict{Symbol, Any}()
 
-    NCDataset(nfile; format=:netcdf4_classic) do nc
+    NCDataset(nfile) do nc  # ; format=:netcdf4_classic
+        # reading first the dimensions:
         var_output[:time] = convert_time2DateTime(nc)
+        var_output[:units] = (time="Time UTC [hour]",)
+        
+        for (inkey, x) ∈ vars_categorize
 
-        for inkey ∈ keys(vars_categorize)
-            x = vars_categorize[inkey]
-
-            tmp = getNCvariable(nc, x)
+            var_output[inkey] = getNCvariable(nc, x)
             
-            if haskey(nc[x].attrib, "missing_value")
-                miss_val = nc[x].attrib["missing_value"]
-            elseif haskey(nc[x].attrib, "_FillValue")
-                miss_val = nc[x].attrib["_FillValue"]
-            else
-                miss_val = 9.96921f36
-            end
-
-            # Cleaning missing values from variables :
-            #eltype(tmp) <: AbstractFloat && (tmp[tmp .≈ miss_val] .= NaN)
-            if eltype(tmp) <: Union{Missing, AbstractFloat}
-                tmp = nomissing(tmp, NaN32)
-            end
-
-            
-            var_output[inkey] = tmp
+            var_output[:units] = (; var_output[:units]..., (inkey=>getNCunits(nc, x),)... )
         end
 
     end
 
     # Additional computation:
-    # integration of lwc only for pixels with flag=1, 2 or 3:
-    if apply_flag
-        idxnan = findall(x->x ∉ (1:3), var_output[:flag])
+    # Only pass values that are indicated by apply_flag, otherwise values are converted to NaN32.
+    if !isempty(apply_flag)
+        idxnan = findall(x->x ∉ apply_flag, var_output[:flag])
         var_output[:lwc][idxnan] .= NaN32
     end
 
@@ -233,6 +261,7 @@ function readCLNFile(nfile::String; modelreso=false, altfile=nothing)
 
     # Categorize variables to read:
     vars_categorize = Dict(
+        :height => "height",
         # General data
         :alt => "altitude",
         :lat => "latitude",
@@ -247,6 +276,7 @@ function readCLNFile(nfile::String; modelreso=false, altfile=nothing)
         :δ => "depol",
         #MWR
         :LWP => "lwp",
+        :IWV => "iwv",
         #CLOUDNETpy
         :P_INSECT => "insect_prob",
         :QUALBITS => "quality_bits",
@@ -271,8 +301,9 @@ function readCLNFile(nfile::String; modelreso=false, altfile=nothing)
     NCDataset(nfile; format=:netcdf4_classic) do nc
 
         var_output[:time] = convert_time2DateTime(nc)
-
-        var_output[:height] = nc["height"][:]
+        var_output[:units] = (time="Time UTC [hour]",)
+        
+        #var_output[:height] = getNCvariable(nc, "height") #nc["height"][:]
 
         # Reading some global attributes:
         if haskey(nc.attrib, "software_version")
@@ -287,41 +318,11 @@ function readCLNFile(nfile::String; modelreso=false, altfile=nothing)
         end
       
         for (inkey, x) ∈ vars_categorize
-            #x = vars_categorize[inkey]
+            
             !haskey(nc, x) && continue
 
-            tmp = getNCvariable(nc, x)
-            
-            if haskey(nc[x].attrib, "missing_value")
-                miss_val = nc[x].attrib["missing_value"]
-            elseif haskey(nc[x].attrib, "_FillValue")
-                miss_val = nc[x].attrib["_FillValue"]
-            else
-                miss_val = 9.96921f36
-            end
-
-            # Cleaning missing values from variables :
-            
-            varout = let dd = size(tmp)
-                isempty(dd) ? NaN : fill(NaN, dd)
-            end
-            if typeof(tmp) <: Number
-                varout = tmp
-                
-            elseif eltype(tmp) <: Union{Missing, AbstractFloat}
-                idxnan = .!ismissing.(tmp)
-                varout[idxnan] .= tmp[idxnan]
-                varout[varout .≈ miss_val] .= NaN
-                
-            elseif eltype(tmp) <: AbstractFloat
-                idxnan = tmp .≈ miss_val
-                varout[.!idxnan] .= tmp[.!idxnan]
-            else
-                # in case of variables with strings
-                varout = tmp
-            end
-            
-            var_output[inkey] = varout
+            var_output[inkey] = getNCvariable(nc, x)
+            var_output[:units] = (; var_output[:units]..., (inkey=>getNCunits(nc, x),)... )            
         end
 
         # If modelreso = true, interpolate model data to cloudnet resolution:
@@ -344,7 +345,7 @@ function readCLNFile(nfile::String; modelreso=false, altfile=nothing)
             ConvertModelResolution(var_output,
                                    model_time,
                                    var_output[:model_height])
-            #    cln_time=tmp_time)
+
         end
 
     end
@@ -364,8 +365,7 @@ function readCLNFile(nfile::String; modelreso=false, altfile=nothing)
     if isfile(classfile)
     
         NCDataset(classfile; format=:netcdf4_classic) do nc
-            [var_output[k] = nc[v][:,:] for (k,v) ∈ vars_classific if haskey(nc, v)]
-            #[var_output[x] = nc[vars_classific[x]][:,:] for x ∈ keys(vars_classific)];
+            [var_output[k] = getNCvariable(nc, v) for (k,v) ∈ vars_classific if haskey(nc, v)]
         
         end
     else
@@ -436,7 +436,8 @@ function readReffFile(nfile::String; altfile::String="")
     # Reading first D_er data files:
     NCDataset(der_file; format=:netcdf4_classic) do nc
         var_output[:time] = convert_time2DateTime(nc)
-
+        var_output[:units] = (time="Time UTC [hour]",)
+        
         isfmi = haskey(nc.attrib, "cloudnetpy_version")
         !isfmi && @warn("It seems not a Der Cloudnetpy file! ...assuming legacy Cloudnet!")
         
@@ -454,11 +455,8 @@ function readReffFile(nfile::String; altfile::String="")
             
             !haskey(nc, x) && continue
             
-            tmp = let xout=getNCvariable(nc, x)
-                eltype(nc[x]) <: Integer ? xout : nomissing(xout, NaN32)
-            end
-            
-            var_output[inkey] = tmp
+            var_output[inkey] = getNCvariable(nc, x)
+            var_output[:units] = (; var_output[:units]..., (inkey=>getNCunits(nc, x),)... )
         end
 
     end
@@ -486,11 +484,8 @@ function readReffFile(nfile::String; altfile::String="")
 
             !haskey(nc, x) && continue
             
-            tmp = let xout=getNCvariable(nc, x)
-                eltype(nc[x]) <: Integer ? xout : nomissing(xout, NaN32)
-            end
-            
-            var_output[inkey] = tmp
+            var_output[inkey] = getNCvariable(nc, x)
+            var_output[:units] = (; var_output[:units]..., (inkey=>getNCunits(nc, x),)... )
         end
 
     end

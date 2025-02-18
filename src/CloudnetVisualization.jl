@@ -17,14 +17,17 @@ julia> show_LWC_IWC(lwc, iwc)
 julia> show_LWC_IWC(lwc, iwc; )
 ```
 WHERE:
-```julia-repl
-* lwc::Dict{Symbol, Any} the cloudnet product for liquid water content,
-* iwc::Dict{Symbol, Any} the cloudnet product for ice water content,
-```
+* ```lwc::Dict{Symbol, Any}``` the cloudnet product for liquid water content,
+* ```iwc::Dict{Symbol, Any}``` the cloudnet product for ice water content,
 
+Part of ```CloudnetTools.jl```, see LICENSE.TXT
     (c) Pablo Saavedra Garfias
 """
-function show_LWC_IWC(LWC::Dict, IWC::Dict; SITENAME="", mxhgt=10, twoplots=false, showisoT=true, savefig=:none, cnt::Dict, extras=Dict())
+function show_LWC_IWC(nfile_lwc::String; nfile_iwc::String="", cnt::Dict="", SITENAME="", mxhgt=10, twoplots=false, showisoT=true, savefig=:none, extras=Dict())
+
+end
+# --- OR
+function show_LWC_IWC(LWC::Dict, IWC::Dict, cnt::Dict, ; SITENAME="", mxhgt=10, twoplots=false, showisoT=true, savefig=:none, extras=Dict())
     
     # defining parameters for LWC:
     CLiqLIM = (1f-2, 0.5f1) #(-2, 1);
@@ -40,20 +43,30 @@ function show_LWC_IWC(LWC::Dict, IWC::Dict; SITENAME="", mxhgt=10, twoplots=fals
 
     Xstrname = "TIME UTC from $(SITENAME) "*Dates.format(IWC[:time][2], "dd.u.yyyy")
 
-    strtitle = "log₁₀ water content / g m⁻³";
+    strtitle = "log₁₀ water content [g m⁻³]";
 
     XLIM = extrema(IWC[:time])
 
-    pice = plot(IWC[:time], 1f-3IWC[:height], 1f3IWC[:iwc], st=:heatmap, color=CIceCOL, clim=CIceLIM, ylim=(0, mxhgt), xlim=XLIM, xticks=(tm_tick, ""), yticks=:none, colorbar=twoplots, colorbar_scale=:log10);
+    # creating heatmap for IWC:
+    pice = plot(IWC[:time], 1f-3IWC[:height], 1f3IWC[:iwc], st=:heatmap,
+                color=CIceCOL, clim=CIceLIM, colorbar=twoplots, colorbar_scale=:log10,
+                ylim=(0, mxhgt), xlim=XLIM, xticks=(tm_tick, ""));
 
-    # plot both together:
+    # plot both together overlapped or in a grid (2,1):
     if twoplots
-        mxplt = plot(LWC[:time], 1f-3LWC[:height], 1f3LWC[:lwc], st=:heatmap, color=CLiqCOL, clim=CLiqLIM, ylim=(0, mxhgt), colorbar=twoplots, colorbar_scale=:log10, xlim=XLIM, xlabel=Xstrname, xticks=(tm_tick, str_tick), xrot=45, xtickfontsize=11, xguidefont=font(12), title=strtitle); #, background_color_subplot=:transparent);
+        mxplt = plot(LWC[:time], 1f-3LWC[:height], 1f3LWC[:lwc], st=:heatmap,
+                     color=CLiqCOL, clim=CLiqLIM, colorbar=twoplots, colorbar_scale=:log10,
+                     ylim=(0, mxhgt),
+                     xlim=XLIM, xlabel=Xstrname, xticks=(tm_tick, str_tick), xrot=45, xtickfontsize=11, xguidefont=font(12),
+                     title=strtitle); #, background_color_subplot=:transparent);
 
     else
         mxplt = plot(pice, colorbar=:none);
     
-        plot!(mxplt, LWC[:time], 1f-3LWC[:height], 1f3LWC[:lwc], st=:heatmap, color=CLiqCOL, inset=(1,bbox(0,0,1,1)), subplot=2, colorbar=:none, colorbar_scale=:log10, background_color_subplot=:transparent, ylim=(0, mxhgt), xlim=XLIM, xlabel=Xstrname, xticks=(tm_tick, str_tick), xrot=45, xtickfontsize=11, xguidefont=font(12), ylabel="Altitude / km", title=strtitle, tick_dir=:out, framestyle=:box, gridstyle=:dash);
+        plot!(mxplt, LWC[:time], 1f-3LWC[:height], 1f3LWC[:lwc], st=:heatmap, subplot=2, inset=(1,bbox(0,0,1,1)),
+              color=CLiqCOL, clim=CLiqLIM, colorbar=:none, colorbar_scale=:log10, background_color_subplot=:transparent,
+              ylim=(0, mxhgt), ylabel="Altitude [km]", xlim=XLIM, xlabel=Xstrname, xticks=(tm_tick, str_tick), xrot=45, xtickfontsize=11, xguidefont=font(12),
+              title=strtitle, tick_dir=:out, framestyle=:box, gridstyle=:dash);
 
     end
 
@@ -64,7 +77,7 @@ function show_LWC_IWC(LWC::Dict, IWC::Dict; SITENAME="", mxhgt=10, twoplots=fals
     
     Yin = 1f-3cnt[:model_height]
     #TLEV = [5, 0, -5, -10, -15, -20, -25, -30]
-    BB = bbox(0,0,1,1)
+    BB = bbox(0, 0, 0.89, 1)
 
     if showisoT
         # converting to Celcius in case Temperature is in K
@@ -75,21 +88,29 @@ function show_LWC_IWC(LWC::Dict, IWC::Dict; SITENAME="", mxhgt=10, twoplots=fals
         Tlevels = extrema(filter(!isnan,Tin)) |> x->ceil.(range(ceil(x[1]), stop=floor(x[2]), length=10))
         Attach_Isotherms(mxplt, Xin, Yin[1:ihmax], Tin,
                          (1, BB), 2, TLEV = Tlevels, maxhgt=(0, mxhgt))
+        twoplots && Attach_Isotherms(pice, Xin, Yin[1:ihmax], Tin,
+                         (1, BB), 2, TLEV = Tlevels, maxhgt=(0, mxhgt))
     end
 
     
     # creating colorbars for merged or gridded plots:
     if twoplots
-        outplt = plot(mxplt, pice, layout=grid(2,1), ylabel="Altitude / km", tick_dir=:out, framestyle=:box, gridstyle=:dash)# , background_color_subplot=:transparent);
+        outplt = plot(pice, mxplt, layout=grid(2,1), ylabel=["Altitude [km]" ""], tick_dir=:out, framestyle=:box, gridstyle=:dash)# , background_color_subplot=:transparent);
     else
-        return mxplt
+#        return mxplt
         # * liquid
         liq_val = range(CLiqLIM[1], stop=CLiqLIM[2], length=7);
-        cmliq = heatmap([-1], liq_val, liq_val', xlim=(1,2), color=CLiqCOL, clim=CLiqLIM, colorbar_title="liquid", colorbar_scale=:log10, tick_dir=:out, xticks=:none, xaxis=false, box=false, title="LWC");
+        cmliq = heatmap([-1], liq_val, liq_val',
+                        color=CLiqCOL, clim=CLiqLIM, colorbar_title="liquid", colorbar_scale=:log10,
+                        xlim=(1,2) , xticks=:none, xaxis=false,
+                        tick_dir=:out, box=false, title="LWC");
 
         # * ice
         ice_val = range(CIceLIM[1], stop=CIceLIM[2], length=7);
-        cmice = heatmap!(cmliq, [-1], ice_val, ice_val', xlim=(1,2), color=CIceCOL, clim=CIceLIM, colorbar_title="ice", colorbar_scale=:log10, tick_dir=:out, xticks=:none, xaxis=false, box=false, inset=(1, bbox(0,0,0.87,1)), subplot=2) #, title="IWC", right_margin=2Plots.mm);
+        cmice = heatmap!(cmliq, [-1], ice_val, ice_val',
+                         color=CIceCOL, clim=CIceLIM, colorbar_title="ice", colorbar_scale=:log10,
+                         xlim=(1,2), xticks=:none, xaxis=false,
+                         tick_dir=:out, box=false, inset=(1, bbox(0,0,0.87,1)), subplot=2) #, title="IWC", right_margin=2Plots.mm);
 
         # creating output layout plot:
         ll = @layout [a{0.96w} b{0.02w} c{0.02w}];
@@ -114,23 +135,27 @@ julia> show_classific(cnt);
 julia> show_classific(cln_file); 
 ```
 WHERE:
-```julia-repl
-* cnt::Dict dictionary ouput from read_CNTfile(cloudnet_file),
-* cln_file::String Full paht of Cloudnet data from CloudnetTools.readCLNFile(cln_file),
-* SITENANE::String (optional) string with name of site,
-* maxhgt::Number (optional) indicating the maximum height in km, default=8,
-* showlegend::Bool (optional) show Cloudnet legend colors, default=true
-* showatm::Dict(:wind, :isoT, :procas) to add meteo data to the plot, "wind" & "iso-temp" or "Profile cascade of variable", default=(true, true, false)
-```
+* ```cnt::Dict``` dictionary ouput from ```read_CNTfile(cloudnet_file)```,
+* ```cln_file::String``` Full paht of Cloudnet classification data file,
+* ```SITENANE::String``` (optional) string with name of site,
+* ```maxhgt::Number``` (optional) indicating the maximum height in km, default=8,
+* ```showlegend::Bool``` (optional) show Cloudnet legend colors, default=true
+* ```showatm::Dict(:wind, :isoT, :procas)``` to add meteo data to the plot, "wind" & "iso-temp" or "Profile cascade of variable", default=(true, true, false)
+
 Output:
-* plt::Plot output plot object.
+* ```plt::Plot``` output plot object.
+
+Part of ```CloudnetTools.jl```, see LICENSE.TXT
+    (c) Pablo Saavedra Garfias
 """
-function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=true,
+function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=:top,
                         atmosplot=Dict(), showatm=Dict(:wind=>true, :isoT=>true, :procas=>false), savefig=:none, extras=Dict())
 
     # defining time axis ticks:
     tm_tick = cnt[:time][1]:Minute(120):cnt[:time][end];
     tm_lims = (cnt[:time][1], cnt[:time][end])
+
+    ym_tick = (0:1:maxhgt)
     
     Xstrname = let tmp = Date.(tm_lims) |> unique
         formatstr = if length(tmp)==1
@@ -140,18 +165,19 @@ function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=true,
         end
         !isempty(SITENAME) && (formatstr *= ", "*SITENAME)
         formatstr
-    end #"TIME UTC [hour] from "*Dates.format(cnt[:time][2], "dd.u.yyyy")
+    end
 
-    strtitle = (tm_tick[1], 7.5, text("Cloudnet Target Classification "*SITENAME, 11, halign=:left))
+    strtitle = (tm_tick[1], 7.5, text("Cloudnet Target Classification ", 11, halign=:left))
     
-    cldnet = CloudNetPalette("classific")
-    l = grid(2,1, heights=(0.2,0.8)) #[a{0.25h}; b];
+    cldnet = CloudNetPalette(:classific)
+    
     Y_LIM = (0, maxhgt)
     
     classplt = plot(cnt[:time], 1f-3cnt[:height], cnt[:CLASSIFY],
                     st=:heatmap, colorbar = false, framestyle = :box,
-                    color=palette(cldnet, 11), ylim=Y_LIM, clim=(0,10),
-                    ylabel="Height A.G.L. / km", ytickfontsize=11, minorticks=true,
+                    color=palette(cldnet, 11), clim=(0,10),
+                    ylim=Y_LIM, yticks=ym_tick,
+                    ylabel="Height A.G.L. [km]", ytickfontsize=11, minorticks=true,
                     xlabel= Xstrname, tick_direction=:out, 
                     xticks=(tm_tick, Dates.format.(tm_tick, "H")), xrot=0,
                     xtickfontsize=13, xguidefontsize=18; extras...);  # xguidefont=font(12)
@@ -196,28 +222,50 @@ function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=true,
         Nsubplt += 1
     end
     
-    if showlegend
-        classleg = ShowLegendCloudNetClassification("classific", SITENAME=SITENAME)
+    if showlegend ∈ (:top, :bottom, :side)
+        classleg = ShowLegendCloudNetClassification(:classific, SITENAME=SITENAME, showlegend=showlegend)
 
-        pltout = plot(classleg, classplt, layout=l, size=(800,700))
+
+    elseif showlegend==:none
+        pltout = plot(classplt, size=(800,500); extras...)
     else
-        pltout = plot(classplt, size=(800,600))
+        @warn("showlegend=$(showlegend) not supported!")
+        showlegend=:none
     end
+    
+    # defining layout for classification and legend:
+    if showlegend==:top
+        l = grid(2,1, heights=(0.2,0.8)) #[a{0.25h}; b];
+        pltout = plot(classleg, classplt, layout=l, size=(800,700))        
+    elseif showlegend==:bottom
+        l = grid(2,1, heights=(0.8,0.2))
+        pltout = plot(classplt, classleg, layout=l, size=(800,700))
+    elseif showlegend==:side
+        l = grid(1,2, widths=(0.9,0.1))
+        pltout = plot(classplt, classleg, layout=l, size=(800,500))
+    elseif showlegend==:none
+        nothing
+    else
+        @warn("showlegend=$(showlegend) not supported!")
+        nothing
+    end
+
+    
 
     savefig != :none && typeof(savefig) <: String && Plots.savefig(pltout, savefig)
     
     return pltout
 end
 # -- OR
-function show_classific(cnt_file::String; SITENAME="", maxhgt=8, atmosplot=Dict(), showlegend=true, savefig=:none)
+function show_classific(cnt_file::String; SITENAME="", maxhgt=8, atmosplot=Dict(), showlegend=:top, savefig=:none)
     cnt = CloudnetTools.readCLNFile(cnt_file)
     return show_classific(cnt, SITENAME=SITENAME, maxhgt=maxhgt, atmosplot=atmosplot, showlegend=showlegend,savefig=savefig)
 end
 # ----/
 
 
-function CloudNetPalette(ColorType::String)
-    if ColorType == "classific"
+function CloudNetPalette(ColorType::Symbol)
+    if ColorType == :classific
         tmp = [
             (1.00,  1.0 ,  1.00);
             (0.44,  1.0 ,  0.92);
@@ -231,7 +279,7 @@ function CloudNetPalette(ColorType::String)
             (0.89,  0.29,  0.13);
             (0.7 ,  0.21,  0.34)
         ];
-    elseif ColorType == "detection"
+    elseif ColorType == :detection
         tmp = [
             (0.247,  0.704,  0.43);
             (0.44 ,  0.926,  0.34); 
@@ -247,10 +295,33 @@ function CloudNetPalette(ColorType::String)
     return cldnet
 end
 
-function ShowLegendCloudNetClassification(LegendType::String; SITENAME::String="")
+"""
+Function to create a canvas with the legends for Cloudnet classification or detection products:
 
-    strtitle = !isempty(SITENAME) ? "Cloudnet Target Classification "*SITENAME : ""
-    if LegendType == "classific"
+USAGE:
+```julia-repl
+julia> product = :classific
+julia> legplt = ShowLegendCloudNetClassification(product, SITENAME="mosaic")
+julia> legplt = ShowLegendCloudNetClassification(product, SITENAME="mosaic", showlegend=:none)
+julia> legplt = ShowLegendCloudNetClassification(product, SITENAME="mosaic", extras=Dict(:framestyle=>:box))
+```
+WHERE:
+* ```product::Symbol``` either ```:classific``` or ```:detection```,
+* ```SITENAME::String``` (Optional) with the name of the measurement site (default ""),
+* ```showlegend::Symbol``` Where to put the legend, either ```:top``` (default), ```:bottom```, ```:side```, ```:none```
+* ```extras::Dict{Symbol, Any}``` Pairs indicating extra parameter for the Plot to add/change.
+
+OUTPUT:
+* ```legplt::Plots.Plot``` the legend plot generated.
+
+Part of ```CloudnetTools.jl```, see LICENSE.TXT
+   (c) Pablo Saavedra Garfias
+"""
+function ShowLegendCloudNetClassification(LegendType::Symbol; SITENAME::String="", showlegend=:top, extras=Dict())
+
+
+
+    if LegendType == :classific && showlegend ∈ (:top, :bottom)
         txt_labels = [
             #X, Y, "short_name", "long_name"
             (41, 1,"Clear sky", "Clear sky"),
@@ -265,7 +336,37 @@ function ShowLegendCloudNetClassification(LegendType::String; SITENAME::String="
             (41, 3,"Insects", "Insects/no cloud or precipitation"), 
             (41, 4,"Aerosol & insects", "Aerosol coexisting with insects/no cloud or precipitation")
         ];
-    elseif LegendType == "detection"
+        xfak = 1.5;
+        yfak = 1.5;
+        fz = 11;
+        strtitle = !isempty(SITENAME) ? "Cloudnet Target Classification "*SITENAME : ""
+        optext = Dict(ifelse(showlegend==:top, :title=>strtitle, :xlabel=>strtitle),
+                      :xlim=>(-0.1,60), :ylim=>(-1,7),
+                      ifelse(showlegend==:top, :bottom_margin=>-14Plots.mm, :top_margin=>-5Plots.mm))
+        
+    elseif LegendType == :classific && showlegend ==:side
+        txt_labels = [
+            #X, Y, "short_name", "long_name"
+            (1, 0,"Clear", "Clear sky"),
+            (1, 1,"Liquid", "Cloud liquid droplets only"), 
+            (1, 2,"Drizzle", "Drizzle or rain"), 
+            (1, 3,"Drizzle\n& Liquid", "Drizzle or rain coexisting with cloud liquid droplets"),
+            (1, 4,"Ice", "Ice particles"), 
+            (1, 5, "SCL", "Ice coexisting with supercooled liquid droplets"),
+            (1, 6,"Melting", "Melting ice particle"),
+            (1, 7,"Melting\n& SCL", "Melting ice particles coexisting with cloud liquid droplets"), 
+            (1, 8,"Aerosol", "Aerosol particles/no cloud or precipitation"), 
+            (1, 9,"Insects", "Insects/no cloud or precipitation"), 
+            (1, 10,"Aerosol\n& Insect", "Aerosol coexisting with insects/no cloud or precipitation")
+        ];
+        xfak = 0.5;
+        yfak = 1.0;
+        fz = 9
+
+        strtitle = ""
+        optext = Dict(:title=>strtitle, :left_margin=>-10Plots.mm, :xlim=>(0.5,3), :ylim=>(-1,10), extras...)
+        
+    elseif LegendType == :detection && showlegend ∈ (:top, :bottom)
         txt_labels = [
             (1, 1, "Ra + Li", "Good Radar & Lidar");
             (1, 2, "Ra", "Good Radar Echo"); 
@@ -274,26 +375,27 @@ function ShowLegendCloudNetClassification(LegendType::String; SITENAME::String="
             (7, 1, "Ra - Att", "Radar uncorrected \nfor liquid attenuation");
             (7, 2, "Ra clutter", "Radar ground clutter")
         ];
+        yfak = 1.5;
+        fz = 11;
+        strtitle = !isempty(SITENAME) ? "Cloudnet Target Detection "*SITENAME : ""
     else
         error("$LegendType not supported!")
     end 
     cldnet = CloudNetPalette(LegendType)
 
-    scatter(map(x->(x[1], 1.5x[2]), txt_labels),
+    scatter(map(x->(x[1], yfak*x[2]), txt_labels),
             marker=:square, grid=:false, markerstroke=:none,
-            framestyle=:none, widen=true, title=strtitle,
+            framestyle=:none, widen=true,
             markersize=8, markercolor=cldnet, legend=false, axis=false,
-            clipping=:false, xlim=(-0.1, 60), ylim=(0, 8),
-            bottom_margin=-8Plots.mm);
+            clipping=:false; optext...);
     
-    tmp = map(x->(x[1]+1.5, 1.5x[2], text(x[3], 11, :left)), txt_labels) |> annotate!;
+    tmp = map(x->(x[1]+xfak, yfak*x[2], text(x[3], fz, :left)), txt_labels) |> annotate!;
 
     return tmp
 end
 # ----/
 
 function Attach_Isotherms(pltin, Xin, Yin, Zvar, BB, sp; maxhgt=(0,8), TLEV=10, extras=Dict())
-    #TLEV = [5, 0, -5, -10, -15, -20, -25, -30]
     
     pltin = Plots.contour!(pltin, Xin, Yin, Zvar,
                            levels = TLEV, ylim=maxhgt, xlim = extrema(Xin), ticks=:none,
@@ -349,44 +451,57 @@ julia> show_measurements(cln_file)
 julia> show_measurements(radar, lidar, mwr)
 ```
 WHERE:
-```julia-repl
-* cln::Dict() Cloudnet categorization data from CloudnetTools.readCLNFile(),
-* cln_file::String Full path to the categorization file whos measurements to plot,
-* radar::Dict() Radar data to plot,
-* lidar::Dict() Lidar data to plot,
-* mwr::Dict Micorwave radiometer data to plot,
-```
+* ```cln::Dict()``` Cloudnet categorization data from ```CloudnetTools.readCLNFile()```,
+* ```cln_file::String``` Full path to the categorization file whose measurements to plot,
+* ```radar::Dict()``` Radar data to plot,
+* ```lidar::Dict()``` Lidar data to plot,
+* ```mwr::Dict``` Microwave radiometer data to plot,
+
 OPTIONAL ARGUMENTS:
-* atmosplot::Dict(:model\\_time, :model\\_height, :T, :UWIND, :VWIND) to add meteo data to the plot, default Dict(),
-* SITENAME::String Measurement site to show in plot, default "",
-* maxhgt::Number Maximum height in km to show in height-time plot, default 8 km,
-* savefig::String Full path with file name to store the plot in PNG format, default :none,
-* showclassific::Bool Flag to include Cloudnet classificaiton on top of measurements, default false,
-* extras::Dict Dictionary with standard Plots.jl arguments to adjust the plot, dafault empty.
+* ```atmosplot::Dict(:model_time, :model_height, :T, :UWIND, :VWIND)``` to add meteo data to the plot, default ```Dict()```,
+* ```SITENAME::String``` Measurement site to show in plot, default "",
+* ```maxhgt::Number``` Maximum height in km to show in height-time plot, default 7.5 km,
+* ```savefig::String``` Full path with file name to store the plot in PNG format, default ```:none```,
+* ```attach::Symbol``` To include other products e.g. ```:classific```, ```:detection```, default ```:none```,
+* ```extras::Dict``` Dictionary with standard Plots.jl arguments to adjust the plot, default empty.
 
 Output:
-* plt::Plot output plot object.
+* ```plt::Plot``` output plot object.
 
-    (c) Pablo Saavedra Garfias
+Part of ```CloudnetTools.jl```, see LICENSE.TXT
+   (c) Pablo Saavedra Garfias
 """
-function show_measurements(cln_file::String; atmosplot=Dict(), SITENAME::String="", maxhgt=8, savefig=:none, showclassific=false, extras=Dict())
+function show_measurements(cln_file::String; atmosplot=Dict(), SITENAME::String="", maxhgt=7.5, savefig=:none, attach=:none, extras=Dict())
     cln = CloudnetTools.readCLNFile(cln_file)
-    return show_measurements(cln; atmosplot=atmosplot, SITENAME=SITENAME, maxhgt=maxhgt, savefig=savefig, showclassific=showclassific, extras=extras)
+
+    return show_measurements(cln; atmosplot=atmosplot, SITENAME=SITENAME, maxhgt=maxhgt, savefig=savefig, attach=attach, extras=extras)
+    
 end
 # --
-function show_measurements(cln::Dict; atmosplot=Dict(), SITENAME::String="", maxhgt=8, savefig=:none, showclassific=false, extras=Dict())
-    # converting to access the Cloudnet data:
-    radar = Dict(K => cln[K] for K in [:time, :height, :Ze])
-    lidar = Dict(K => cln[K] for K in [:time, :height, :β])
-    mwr = Dict(K => cln[K] for K in [:time, :LWP])
+function show_measurements(cln::Dict; atmosplot=Dict(), SITENAME::String="", maxhgt=7.5, savefig=:none, attach=attach, extras=Dict())
 
+    # defining the list of variables for every instrument:
+    var_radar = filter(x->haskey(cln,x), (:time, :height, :Ze) )
+    var_lidar = filter(x->haskey(cln,x), (:time, :height, :β) )
+    var_mwr = filter(x->haskey(cln,x), (:time, :LWP, :IWV) )
+
+    # converting to access the Cloudnet data:
+    radar = Dict{Symbol, Any}(K => cln[K] for K in var_radar)
+    lidar = Dict{Symbol, Any}(K => cln[K] for K in var_lidar)
+    mwr = Dict{Symbol, Any}(K => cln[K] for K in var_mwr)
+
+    # adding units to radar, lidar, mwr:
+    radar[:units] = cln[:units][var_radar]
+    lidar[:units] = cln[:units][var_lidar]
+    mwr[:units] = cln[:units][var_mwr]
+    
     rs_time = haskey(cln, :model_time) ? :model_time : :time
 
     rs_list = [rs_time, :model_height, :T, :UWIND, :VWIND]
     rs = isempty(atmosplot) ? Dict(K => cln[K] for K in rs_list) : atmosplot
     #atmosplot && (rs[:model_height] *= 1f-3)  # converting to km
 
-    if showclassific
+    if attach == :classific
         return show_measurements(radar, lidar, mwr, atmosplot=rs, SITENAME=SITENAME, maxhgt=maxhgt, savefig=savefig, cln=cln, extras=extras)
     else
         return show_measurements(radar, lidar, mwr, atmosplot=rs, SITENAME=SITENAME, maxhgt=maxhgt, savefig=savefig, extras=extras)
@@ -394,23 +509,26 @@ function show_measurements(cln::Dict; atmosplot=Dict(), SITENAME::String="", max
 end
 # --- OR 
 function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=Dict(),
-        SITENAME::String="", maxhgt=8, savefig=false, cln=nothing, extras=Dict())
+        SITENAME::String="", maxhgt=7.5, savefig=false, cln=nothing, extras=Dict())
 
     Y_LIM = (0, maxhgt)
-    #X_LIM = extrema(radar[:time])
+    ym_tick = (0:2:maxhgt)
+
     tm_tick = mwr[:time][1]:Minute(120):mwr[:time][end]
     tm_lims = (minimum([mwr[:time][1], lidar[:time][1], radar[:time][1]]),
                maximum([mwr[:time][end], lidar[:time][end], radar[:time][end]]))
     
     # For the Radar:
+    Hfactor = ifelse(contains(radar[:units][:height], "km"), 1f0, 1f-3 )
+    
     BB = bbox(0,0,0.88,1)  # 0.88 because it contains colorbar, otherwise 1
-    radarplt = Plots.plot(radar[:time], 1f-3radar[:height], radar[:Ze],
+    radarplt = Plots.plot(radar[:time], Hfactor*radar[:height], radar[:Ze],
                           st=:heatmap, color=palette(:lighttest,20), clim=(-30, 10),
-                          xlim=tm_lims, ylim=Y_LIM, tick_dir=:out, ytickfontsize=11,
-                          colorbar_title="\nRadar Reflectivity [dBz]", #titlefontsize=11,
-                          ylabel="Height A.G.L. / km", xticks=(tm_tick, ""),
-                          guidefontsize=13, ticksfontsize=13, minorticks=true)
-                          #bottom_margin=-1.5Plots.mm, framestyle=:box);
+                          colorbar_tickfontsize=6, colorbar_title="Radar Reflectivity [dBz]",
+                          xlim=tm_lims, xticks=(tm_tick, ""),
+                          ylim=Y_LIM, yticks=ym_tick, tick_dir=:out, ytickfontsize=11, ylabel="Height A.G.L. [km]", 
+                          guidefontsize=13, ticksfontsize=13, minorticks=true, framestyle=:box)
+
 
     # adding atmospheric information
     atmos=atmosplot
@@ -444,19 +562,20 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
     end
     
     # Plot for LIDAR
+    Hfactor = ifelse(contains(lidar[:units][:height], "km"), 1f0, 1f-3 )
+
     BB = bbox(0,0,0.88,1)
-    lidarplt = Plots.plot(lidar[:time], 1f-3lidar[:height], log10.(lidar[:β]),
-                          st=:heatmap, color=:roma, clim=(-7, -4),
-                          xlim=tm_lims, ylim=Y_LIM, tick_dir=:out, ytickfontsize=11, colorbar_width=1,
-                          colorbar_title="\nLidar Backscattering log10 [sr⁻¹ m⁻¹]",
-                          ylabel="Height A.G.L. / km", xticks=(tm_tick, ""), minorticks=true,
-                          guidefontsize=13, subplot=1) #, bottom_margin=-1.5Plots.mm, framestyle=:box);
+    lidarplt = Plots.plot(lidar[:time], Hfactor*lidar[:height], 1f7lidar[:β], st=:heatmap, 
+                          color=:roma, colorbar_scale=:log10, colorbar_tickfontsize=6, colorbar_title="Lidar Backscattering [10⁻⁷ sr⁻¹ m⁻¹]",
+                          xlim=tm_lims, xticks=(tm_tick, ""),
+                          ylim=Y_LIM, yticks=ym_tick, tick_dir=:out, ytickfontsize=11, ylabel="Height A.G.L. [km]", 
+                          minorticks=true, guidefontsize=13, framestyle=:box, subplot=1)
     
     # adding atmospheric information
     if !isempty(atmosplot)
         Attach_Isotherms(lidarplt, Xin, Yin[1:ihmax], Tin,
                          (1, BB), 2, TLEV = Tlevels)
-    
+        
         Attach_Windvector(lidarplt, Xin[1:2:end], Yin[2:4:ihmax],
                           atmos[:UWIND][2:4:ihmax, Xin[1:2:end]],
                           atmos[:VWIND][2:4:ihmax, Xin[1:2:end]],
@@ -472,44 +591,46 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
         end
         !isempty(SITENAME) && (formatstr *= ", "*SITENAME)
         formatstr
-        #@sprintf(formatstr, (Dates.format.(tmp, "dd-uuu-yyyy")...), SITENAME);
+
     end
     
-    mwrplt = Plots.plot(1,1, axis=nothing, border=:none, label=false);
+    lwpfactor = ifelse(contains(mwr[:units][:LWP], "kg"), 1e3 , 1e0)
     
-    Plots.plot!(mwrplt, mwr[:time], mwr[:LWP],
-                ylim=(0, max(200, maximum(mwr[:LWP]))),
-                ylabel="LWP / g m⁻²", l=2,
-                label=false,  tick_dir=:out,
-                yguidefont=font(:steelblue), ytickfontsize=11,
+    mwrplt = Plots.plot(mwr[:time], lwpfactor*mwr[:LWP],
+                ylim=(0, max(200, maximum(lwpfactor*mwr[:LWP]))), ylabel="LWP [g m⁻²]", yguidefont=font(:steelblue), ytickfontsize=11,
                 xticks = (tm_tick, !isnothing(cln) ? "" : Dates.format.(tm_tick, "H")),
-                xlim = tm_lims, inset=(1, BB), subplot=2, minorticks=true,
-                tickfontsize=13, xguidefontsize=15, #framestyle=:box, #font(15),
-                xlabel = !isnothing(cln) ? "" : titletext, xrot=0);
-    #ytickfontcolor=:steelblue,
+                xlim = tm_lims, xlabel = !isnothing(cln) ? "" : titletext, xrot=0, xguidefontsize=15, 
+                l=1.5, label=false,  tick_dir=:out, minorticks=true,
+                tickfontsize=13, framestyle=:box, left_margin=+3Plots.mm );
 
     # Composite figure:
 
     finplt = if !isnothing(cln) && typeof(cln)<:Dict
         ll = @layout [
-            a0{0.3h}
-            a1{0.3h}
-            [b{1.0w, 0.9h} _]
-            [a2{0.99h, 0.89w} _]
+            a0{0.27h}
+            a1{0.27h}
+            [b{0.9w} _;  #[b{0.31h, 0.86w} ;
+            a2{0.7h} a2] #{0.86w} ]
         ]
-            #a0{0.3h}; a1{0.3h}; [b{0.1h}; a2{0.89w}]];
-        clnplt = show_classific(cln; SITENAME="", maxhgt=maxhgt, showlegend=false, atmosplot=atmosplot)
+
+        clnleg = ShowLegendCloudNetClassification(:classific, showlegend=:side; extras=Dict(:left_margin=>-12Plots.mm))
+        
+        clnplt = show_classific(cln; SITENAME="",
+                                maxhgt=maxhgt,
+                                showlegend=:none,
+                                atmosplot=atmosplot,
+                                extras=Dict(:top_margin=>-5Plots.mm, :framestyle=>:box, :yticks=>ym_tick),
+                                )
  
-        Plots.plot(radarplt, lidarplt,  mwrplt, clnplt, layout=ll,  link=:y,
-                        size=(1000,1100), yguidefontsize=13, ytickfontsize=12,
-                        left_margin =1.5Plots.mm, right_margins=:match,
-                        bottom_margin= -3Plots.mm) #[-3 -3 -3 30].*Plots.mm)
+        Plots.plot(radarplt, lidarplt,  mwrplt, clnplt, clnleg, layout=ll,
+                   size=(1000,1100), yguidefontsize=14, ytickfontsize=13,
+                   bottom_margin= -3Plots.mm)
 
     elseif !isnothing(cln) && typeof(cln)<:Plots.Plot
        ll = @layout [a0{0.3h}; a1{0.3h}; [b{0.1h, 0.9w}; a2{0.9w}]];
  
         Plots.plot(radarplt, lidarplt,  mwrplt, cln, layout=ll,  link=:y,
-                        size=(1000,1100), yguidefontsize=13, ytickfontsize=12,
+                        size=(1000,1100), yguidefontsize=14, ytickfontsize=13,
                         left_margin =10Plots.mm, right_margin=10Plots.mm,
                         bottom_margin=[-3 -3 -3 30].*Plots.mm)
  
@@ -517,15 +638,14 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
         ll = @layout [
             a0{0.4h}
             a1{0.4h}
-            b{1.0w}
-        ]; #{0.12h}
+            b{0.992w} _
+        ];
 
-        Plots.plot(radarplt, lidarplt,  mwrplt, layout=ll, # link=:y,
+        Plots.plot(radarplt, lidarplt,  mwrplt, layout=ll, 
                    size=(1000,1000), yguidefontsize=13, ytickfontsize=12,
-                   left_margin =1.5Plots.mm, right_margin=20Plots.mm,
-                   bottom_margin=-3Plots.mm) #; extras...)
-        #                        title = titletext, titlefontsize=15,
-        #                        legend=[false false false], 
+                   left_margin =1.5Plots.mm, right_margin=22Plots.mm,
+                   bottom_margin=-4Plots.mm) #; extras...)
+
     end
     savefig != :none && typeof(savefig)<:String && Plots.savefig(finplt, savefig)
     

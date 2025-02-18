@@ -21,16 +21,17 @@ Part of ```CloudnetTools.jl```, see LICENSE.TXT
 function mwr2nc(mwr_file::String, output_path::String; extra_params=Dict{Symbol, Any}())
     mwr = ARMtools.getMWRData(mwr_file)
     
-    return mwr2nc(mwr::Dict, output_path; extra_params=extra_params)
+    return mwr2nc(mwr::Dict, output_path; extra_params=Dict(:source=>mwr_file, extra_params...) )
 end
 function mwr2nc(mwr_file::Vector{String}, output_path::String; extra_params=Dict{Symbol, Any}())
     mwr = ARMtools.getMWRData(mwr_file)
     
-    return mwr2nc(mwr::Dict, output_path; extra_params=extra_params)
+    return mwr2nc(mwr::Dict, output_path; extra_params=Dict(:source=>mwr_file, extra_params...) )
 end
 function mwr2nc(mwr::Dict, output_path::String; extra_params=Dict{Symbol, Any}())
 
     file_time = datetime24hours(mwr[:time])
+    ntime = length(file_time)
     
     # Creating output file for CloudNetpy
     arm_year = year(mwr[:time][1])
@@ -39,6 +40,12 @@ function mwr2nc(mwr::Dict, output_path::String; extra_params=Dict{Symbol, Any}()
 
     SITE = get_SITE(mwr, extra_params, inkeys=(:site, :campaign))
 
+    # Checking for LWP conversion to older cloudnetpy versions (default false):
+    old_ver = get_parameter(mwr, :oldversion, extra_params, default=false)
+
+    # Converting LWP to kg m⁻² if old_version is false:
+    !old_ver && (mwr[:LWP] .*= 1f-3 )
+    
     # finding DOI from data file or as extra parameter?
     doi = get_parameter(mwr, :doi, extra_params, default="none") ;
 
@@ -52,7 +59,15 @@ function mwr2nc(mwr::Dict, output_path::String; extra_params=Dict{Symbol, Any}()
     file_history = get_parameter(mwr, :history, extra_params,
                                  default="Created by Julia Lang (CloudnetTools.jl)"*string(", ", today() ));
                   
-
+    # WET flag
+    wet_flag = if isa(mwr[:wet], Vector)
+        mwr[:wet]
+    elseif haskey(extra_params, :wet)
+        extra_params[:wet]
+    else
+        fill(NaN32, ntime)
+    end
+    
     ARM_OUTFILE = @sprintf("%04d%02d%02d_%s_mwr.nc", arm_year, arm_month, arm_day, SITE);
 
     outputfile = joinpath(output_path, ARM_OUTFILE);
@@ -62,22 +77,23 @@ function mwr2nc(mwr::Dict, output_path::String; extra_params=Dict{Symbol, Any}()
         "cloudnet_file_type"        => "mwr",
         "title"                     => arm_title,
         "location"                  => SITE,
-        "radiometer_system"         => "Radiometrics",
-        "serial_number"             => "not defined",
+        "radiometer_system"         => get_parameter(mwr, :radiometer_system, extra_params, default="Radiometrics"),
+        "serial_number"             => get_parameter(mwr, :serial_number, extra_params, default="not defined"),
         "year"                      => arm_year,
         "month"                     => arm_month,
         "day"                       => arm_day,
-        "source"                    => "arm.gov",
+        "source"                    => get_parameter(mwr, :source, extra_params, default="arm.gov"),
         "history"                   => file_history,
-        "radiometer_software_version" => "none",
-        "host_PC_software_version"  => "none",
+        "radiometer_software_version" => get_parameter(mwr, :radiometer_software_version, extra_params, default="none"),
+        "host_PC_software_version"  => get_parameter(mwr, :host_PC_software_version, extra_params, default="none"),
         "references"                => doi,
     ))
 
     # Dimensions
 
-    ds.dim["time"] = Inf # unlimited dimension
-
+    #ds.dim["time"] = Inf # unlimited dimension
+    defDim(ds, "time", ntime)
+    
     # Declare variables
 
     nctime_reference = defVar(ds,"time_reference", Float32, (), attrib = OrderedDict(
@@ -124,13 +140,15 @@ function mwr2nc(mwr::Dict, output_path::String; extra_params=Dict{Symbol, Any}()
     ))
 
     ncLWP_data = defVar(ds,"lwp", Float32, ("time",), attrib = OrderedDict(
-        "units"                     => "g m-2",
+        "units"                     => ifelse(old_ver, "g m-2", "kg m-2"),
         "long_name"                 => "Liquid water path",
         "standard_name"             => "atmosphere_cloud_liquid_water_content",
     ))
 
     ncIWV_data = defVar(ds,"iwv", Float32, ("time",), attrib = OrderedDict(
         "units"                     => "kg m-2",
+        "long_name"                 => "Integrated water vapour",
+        "standard_name"             => "atmosphere_mass_content_of_water_vapour",
     ))
 
     ncaltitude = defVar(ds,"altitude", Float32, (), attrib = OrderedDict(
@@ -151,16 +169,16 @@ function mwr2nc(mwr::Dict, output_path::String; extra_params=Dict{Symbol, Any}()
     ))
     
     
-    # Define variables
+    # Assigning variable values:
 
+    nctime[1:ntime] .= file_time
     nctime_reference[:] = get_parameter(mwr, :rerefence, extra_params, default=1f0);
     ncnumber_integrated_samples[:] = get_parameter(mwr, :integrated_samples, extra_params, default=1f0);
     ncminimum[:] = minimum(mwr[:LWP])
     ncmaximum[:] = maximum(mwr[:LWP])
-    nctime[:] = file_time
-    ncrain_flag[:] = mwr[:wet];
-    ncelevation_angle[:] = mwr[:elevation];
-    ncazimuth_angle[:] = mwr[:azimuth];
+    ncrain_flag[:] .= wet_flag;
+    ncelevation_angle[:] .= mwr[:elevation];
+    ncazimuth_angle[:] .= mwr[:azimuth];
     ncretrieval[:] = get_parameter(mwr, :retrieval, extra_params, default=1);
     ncLWP_data[:] = mwr[:LWP];
     ncIWV_data[:] = mwr[:IWV];

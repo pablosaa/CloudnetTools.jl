@@ -15,23 +15,36 @@ using Statistics
 Function to return a String containing the cloudnet site information
 based on information from the data file or extra given to the function:
 USAGE:
-if the data or extra_params contain the keys: [:site] = "arm", [:campaign]="mosaic"
-calling the function will result on:
 ```julia-repl
+julia> extra_params = Dict(:site => "arm", :campaign => "mosaic", :location=>"arctic");
 julia> get_SITE(data, extra_params)
 julia> "mosaic-arm"
+julia> get_SITE(data, extra_params; inkeys=(:location, :site))
+julia> "arctic-arm"
 ```
+WHERE:
+* ```data::Dict```
+* ```extra_params::Dict``` contain the keys: ```:site = "arm", [:campaign]="mosaic"```
+* ```inkeys::Tuple(Symbol,)``` Optional keys to use, default ```(:site, :campaign)```
+
+the function has priority on ```extra_params```, if empty then try with ```data```.
+
 Part of ```CloudnetTools.jl```. See LICENSE.TXT
 """
-function get_SITE(data::Dict, extra_params::Dict; inkeys=(:site, :campaing))
+function get_SITE(data::Dict, extra_params::Dict; inkeys=(:site, :campaign))
     # checking if inkeys exist in extra_params or data:
-    tmpkeys = filter(k->haskey(extra_params, k), inkeys)
-    
-    buffer = isempty(tmpkeys) ? data : extra_params
 
-    isempty(tmpkeys) && (tmpkeys = filter(k->haskey(buffer, k), inkeys))
-        
-    return getindex.((buffer,), tmpkeys) |> x->join( filter(!isempty, x), "-")
+    thesite = ""
+    for indat ∈ (extra_params, data)
+        tmpkeys = filter(k->haskey(indat, k), inkeys)
+        isempty(tmpkeys) && continue
+        theinputs = getindex.((indat,), tmpkeys)
+        thesite = join( filter(!isempty, theinputs), "-")
+        thesite = replace(thesite, ","=>"_", " "=>"")
+        break
+    end
+            
+    return thesite
 end
 # /----
 
@@ -51,14 +64,14 @@ The function priority return values are from: input_params (if exist), data Dict
 Part of ```CloudnetTools.jl```, see LICENSE.TXT
 """
 function get_parameter(data::Dict, param::Symbol, extra_params::Dict;
-                       default=nothing, lims=())
+                       default=nothing, lims=(), silent=true)
 
     out_value = if haskey(extra_params, param)
         extra_params[param]
     elseif haskey(data, param)
         data[param]
     else
-        @warn "$(param) not found in data/extra_params, returning default=$(default)"
+        !silent && @warn("$(param) not found in data/extra_params, returning default=$(default)")
         default
     end
 
@@ -67,10 +80,10 @@ function get_parameter(data::Dict, param::Symbol, extra_params::Dict;
         if check_limits(out_value, lims)
             return out_value
         elseif isnan(out_value)
-            @warn "get_parameter found $(out_value) to be $(param)"
+            !silent && @warn("get_parameter found $(out_value) to be $(param)")
             return out_value
         else
-            @warn "get_parameter found $(param) out of lims=$(lims)"
+            !silent && @warn("get_parameter found $(param) out of lims=$(lims)")
             return out_value
         end
     else
@@ -166,12 +179,13 @@ function convert_time2DateTime(yy::Int64, mm::Int64, dd::Int64, hr_time::Abstrac
 end
 function convert_time2DateTime(nc; time_var="time")::Vector{DateTime}
 
-    hr_time = nc[time_var]
-    typeof(hr_time[1]) <: DateTime && (return hr_time[:])
+    hr_time = nc[time_var][:]
+    typeof(hr_time) <: Vector{DateTime} && (return hr_time)
+
     yy = Int64(nc.attrib["year"])
     mm = Int64(nc.attrib["month"])
     dd = Int64(nc.attrib["day"])
-    hr_time = float.(nc[time_var])
+    hr_time = float.(hr_time)
 
     return convert_time2DateTime(yy, mm, dd, hr_time)
 end

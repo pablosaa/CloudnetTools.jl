@@ -30,29 +30,44 @@ USAGE:
 ```julia-repl
 julia> using CloudnetTools.ACTRIS
 
-julia> uuid = ACTRIS.categorize_it(input_files, "/tmp/categorize.nc")
+julia> categorization_file = "/data/cloudnet/output/categorize.nc";
+julia> uuid = ACTRIS.categorize_it(input_files, categorization_file)
+julia> uuid = ACTRIS.categorize_it(input_files, categorization_file; onlycate=false)
 ```
 INPUT:
 ```julia-repl
 * input_files::Dict{
-    :radar => "arm_radar.nc",
-    :lidar => "arm_lidar.nc",
-    :mwr   => "arm_mwr.nc",
-    :model => "ecmwf_model.nc"}
-* output_file::String with the file name of the output file.
+    :radar => "/data/cloudnet/inputs/arm_radar.nc",
+    :lidar => "/data/cloudnet/inputs/arm_lidar.nc",
+    :mwr   => "/data/cloudnet/inputs/arm_mwr.nc",
+    :model => "/data/cloudnet/inputs/ecmwf_model.nc"}
 ```
+* ```categorization_file::String``` Full path to categorization file to be created,
+* ```onlycate::Bool``` Flag to indicate if no classification file will be created (default=false)
+
+By default a classification file will also be created with same file name replacing "categorize" by "classification".
+
 RETURN:
 * If successful returns the UUID of the categorization file,
-* If failed returns a warning message and nothing
-
+* If failed returns a warning message and ```nothing```.
 """
-function categorize_it(data_files::Dict, categorize_file::String)
+function categorize_it(data_files::Dict, categorize_file::String; onlycate=false)
 
     uuid = try
 	catcnet.generate_categorize(data_files, categorize_file)
     catch e
 	@warn "No categorization possible: $(categorize_file)\n $e"
 	nothing
+    end
+
+    if !onlycate && !isnothing(uuid)
+        classific_file = replace(categorize_file, "categorize"=>"classification")
+        tmp = try
+            generate_products(:classification, categorize_file, classific_file)
+        catch e
+	    @warn "No classification possible for $(categorize_file) => $(classific_file)\n $e"
+	    nothing
+        end
     end
     
     return uuid
@@ -93,7 +108,7 @@ INPUTS: dictionaries containing informations as follow,
     :drizzle => false)
 ```
 RETURNS:
-* If successful the UUID of the lates product generated, otherwise type nothing
+* If successful returns the UUID of the product generated, otherwise returns ```nothing```.
 
     (c) Pablo Saavedra Garfias
 """
@@ -157,9 +172,9 @@ end
 # ================================================================
 
 #=
- Module including to check Quality Control rounitnes of Cloudnetpy
+ Module including to check Quality Control routines of Cloudnetpy
  ******************************************************************
- ++++ MODULE QC for checking generated arm input data files +++++++
+ ++++ MODULE QC for checking generated ARM input data files +++++++
  ******************************************************************
 =#
 

@@ -178,8 +178,8 @@ function converter(list_of_data::Dict, out_path::String; extra_params=Dict{Symbo
     foreach(list_of_data) do (the_key, arm_data)
         output_ex = converter(the_key, arm_data, out_path, extra_params=extra_params)
         #ex = :($(list_of_func[the_key])($arm_data, $out_path, extra_params=$extra_params))
-        isnothing(output_ex) && @warn "$(the_key) cannot be converted! $(e). Return Nothing instead."
-        push!(output_files, ouptut_ex )
+        isnothing(output_ex) && @warn "$(the_key) cannot be converted!. Return Nothing instead."
+        !isnothing(output_ex) && push!(output_files, output_ex )
     end
     
     return output_files
