@@ -38,7 +38,7 @@ function mwr2nc(mwr::Dict, output_path::String; extra_params=Dict{Symbol, Any}()
     arm_month = month(mwr[:time][1])
     arm_day = day(mwr[:time][1])
 
-    SITE = get_SITE(mwr, extra_params, inkeys=(:site, :campaign))
+    SITE = get_SITE(mwr, extra_params, inkeys=(:site, :campaign, :location))
 
     # Checking for LWP conversion to older cloudnetpy versions (default false):
     old_ver = get_parameter(mwr, :oldversion, extra_params, default=false)

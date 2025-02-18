@@ -1,7 +1,7 @@
 name = "CloudnetTools"
 uuid = "c185f6a1-06dd-4ea4-b2f4-959e91ffad06"
 authors = ["Pablo Saavedra G. <pablosaa@uni-bonn.de>"]
-version = "0.2.0"
+version = "0.2.1"
 
 [deps]
 ARMtools = "04fa4220-f7a9-42e2-a909-1083f698c312"
