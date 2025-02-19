@@ -99,14 +99,19 @@ julia> ARM.converter(list_of_files, output_dir)
 julia> ARM.converter(yyyy, mm, dd, keys, input_params)
 ```
 WHERE:
-* keys::Symbol - Indicator of instrument type, it can be one of (:radar, :lidar, :mwr, :ceilometer, :radiosonde),
-* input_file::String - full path to ARM input file to convert,
-* output_dir::String - path to the ouptut directory to place the output files,
-* list_of_files::Dict{Symbol, String} - with keys to input files e.g. :radar=>"/data/KAZR/armradar.20180121.nc",
-* yyyy::Int - year
-* mm::Int - month
-* dd::Int - day
-* extra_params::Dict{Symbol, Any} - Optional Dictionary with extra arguments, default empty.
+* ```keys::Symbol``` - Indicator of instrument type, it can be one of (:radar, :lidar, :mwr, :ceilometer, :radiosonde),
+* ```input_file::String``` - full path to ARM input file to convert,
+* ```output_dir::String``` - path to the ouptut directory to place the output files,
+* ```list_of_files::Dict{Symbol, String}``` - with keys to input files e.g. ```:radar=>"/data/KAZR/armradar.20180121.nc"```,
+* ```yyyy::Int``` - year
+* ```mm::Int``` - month
+* ```dd::Int``` - day
+* ```extra_params::Dict{Symbol, Any}``` - Optional Dictionary with extra arguments, default empty.
+* ```input_params::Dict{Symbol, Any}``` - must include keys :data_path, :output_path, :products
+* * ```:data_path => ::String``` - indicating the path for the ARM input data,
+* * ```:output_path => ::String``` - indicating the path where to put the converted data,
+* * ```:products => ::Dict{Symbol, Any}``` - with ```keys``` indicating the ARM product to use.
+
 
 EXAMPLE:
 To convert the file "/data/KAZR/armradar.20180121.nc" into CloudNet input file, with extra parameters given
@@ -116,7 +121,7 @@ julia> extras = Dict(:snr_filter=>nothing, :site=>"arctic", :campaign=>"mosaic",
 julia> result = ARM.converter(:radar, "/data/KAZR/armradar.20180121.nc", "/output"; extra_params=extras)
 julia> "20180121_arctic-mosaic_radar.nc"
 ```
-Alternatively:
+1. Alternative:
 ```julia-repl
 julia> list_of_files=Dict(:radar=>"/data/KAZR/armkazr.20180121.nc",
                           :lidar=>"/data/CEIL10m/armceil10m.20180121.nc",
@@ -124,6 +129,29 @@ julia> list_of_files=Dict(:radar=>"/data/KAZR/armkazr.20180121.nc",
                           :radiosonde=>"/data/INTERPOLATESONDE/arminterpolrs.20180121.nc");
 julia> ARM.converter(list_of_files, "/output"; extra_params=extras)
 ```
+2. Alternative:
+```julia-repl
+julia> NSAproduct = Dict(
+                      :radar => ("KAZR/ARSCL", "KAZR/CORGE"),
+                      :lidar => "CEIL10m",
+                      :mwr => ("MWR/RET", "MWR/LOS"),
+                 );
+
+julia> input_params = Dict(
+    :site => "utqiagvik", 
+    :campaign => "nsa",
+    :products => NSAproduct,
+    :data_path => "/data/",
+    :output_path => "/output")
+
+julia> ARM.converter(2019,01,19, :radar, input_params; owndir=false)
+julia> "20190119_nsa-utqiagvik_radar.nc"
+```
+The function looks into a data path as ```/data/KAZR/ARSCL/2019/``` to find a data file for ```20190119```,
+in case the product ```KAZR/ARSCL``` does not exist, alternatively look at ```KAZR/CORGE``` product.
+If the optional argument ```owndir=false``` , then all converted data files
+will be placed at ```/output```. Conversely ```owndir=true``` (default) then the converted files are
+placed at ```/output/KAZR/ARSCL/2019``` or ```/output/KAZR/CORGE/2019```, etc.
 
 Part of ```CloudnetTools.jl```, see LICENSE.TXT
 (c) Pablo Saavedra Garfias
