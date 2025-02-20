@@ -52,9 +52,10 @@ function kazr2nc(radar::Dict, output_path::String; extra_params=Dict(), rng0=fal
     # if LDR is not included in data file, usa proxy diff Zxpol-Zcpol:
     !haskey(radar, :LDR) && (radar[:LDR] = radar[:Zxpol] .- radar[:Ze])
 
-    # considering the global attribute radar_frequency has the form: 35.6 GHz
-    # the value will be retrieved as a Vector with two elemens (35.6, "GHz")
-    radar_frequency = let x=radar[:radar_frequency][1]
+    # considering the global attribute radar_frequency has the form: "35.6 GHz"
+    # the value will be retrieved as a Vector with two elements e.g. [35.6, "GHz"]
+    # The KAZR by default is assumed the frequency 34.89 GHz
+    radar_frequency = let x = get_parameter(radar, :radar_frequency, extra_params, default=[34.89, "GHz"])[1]
         typeof(x) <: Number ? x : NaN32
     end
 
