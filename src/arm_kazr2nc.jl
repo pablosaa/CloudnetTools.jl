@@ -83,7 +83,7 @@ function kazr2nc(radar::Dict, output_path::String; extra_params=Dict(), rng0=fal
 
                 # Interpolating variable v
                 ipt = interpolate((vh,vt), v, Gridded(Linear()) )
-                ept = extrapolate(ipt, Linear() )
+                ept = extrapolate(ipt, Flat() )
                 ext_v = [ept(h, t) for h in ext_h, t in ext_t]
                 radar[k] = vcat(ext_v, v)
             end

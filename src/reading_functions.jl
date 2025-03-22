@@ -109,10 +109,10 @@ To have the definition of the flag values, see Metadata in IWC Cloudnet file.
 
 Part of ```CloudnetTools.jl```, see LICENSE.TXT
 """
-function readIWCFile(nfile::String; inc_rain=true, apply_flag::Vector{Int}=Int[])
+function readIWCFile(nfile::String; inc_rain=false, apply_flag::Vector{Int}=Int[])
 
     @assert isfile(nfile) error("$nfile cannot be found!")
-
+    
     vars_categorize = Dict(
         :height => "height",
         :iwc => inc_rain ? "iwc_inc_rain" : "iwc",
@@ -125,9 +125,15 @@ function readIWCFile(nfile::String; inc_rain=true, apply_flag::Vector{Int}=Int[]
     NCDataset(nfile; format=:netcdf4_classic) do nc
         var_output[:time] = convert_time2DateTime(nc)
         var_output[:units] = (time="Time UTC [hour]",)
+
+        if inc_rain && !haskey(nc, "iwc_inc_rain")
+            @warn("Argument 'inc_rain=true' works only for older versions of Cloudnetpy. Using 'iwc' instead! ")
+            vars_categorize[:iwc] = "iwc"
+        end
+
         
         for (inkey, x) ∈ vars_categorize
-
+            
             var_output[inkey] = getNCvariable(nc, x)
             # Adding NamedTuple :units e.g. (time="UTC", (:lwc=>"kg m-3",)...) --> (time="UTC", lwc="kg m-3")
             var_output[:units] = (; var_output[:units]..., (inkey=>getNCunits(nc, x),)... )
