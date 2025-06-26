@@ -21,14 +21,51 @@ WHERE:
 * ```iwc::Dict{Symbol, Any}``` the cloudnet product for ice water content,
 
 Part of ```CloudnetTools.jl```, see LICENSE.TXT
-    (c) Pablo Saavedra Garfias
+    (c) 2022 Pablo Saavedra Garfias
 """
-function show_LWC_IWC(nfile_lwc::String; nfile_iwc::String="", cnt::Dict="", SITENAME="", mxhgt=10, twoplots=false, showisoT=true, savefig=:none, extras=Dict())
+function show_LWC_IWC(nfile_lwc::String="";
+                      nfile_iwc::String="",
+                      nfile_cnt::String="",
+                      SITENAME::String="",
+                      maxhgt::Union{T, Tuple{T,T}}=(0,10),
+                      twoplots::Bool=false,
+                      showisoT::Bool=true,
+                      savefig::Symbol=:none,
+                      extras=Dict()) where T<:Number
+    # Reading the IWC and LWC data files:
+    LWC = isempty(nfile_lwc) || !isfile(nfile_lwc) ? Dict() : CloudnetTools.readLWCFile(nfile_lwc)
+    IWC = isempty(nfile_iwc) || !isfile(nfile_iwc) ? Dict() : CloudnetTools.readIWCFile(nfile_iwc)
+    CLN = isempty(nfile_cnt) || !isfile(nfile_cnt) ? Dict() : CloudnetTools.readCLNFile(nfile_cnt)
 
+    # checking if any file is assigned:
+    if isempty(LWC) && isempty(IWC) && isempty(CLN)
+        @error "none input file is assigned or file not found!"
+        return nothing
+    end
+    
+    # calling the main routine:
+    return show_LWC_IWC(LWC, IWC, CLN;
+                        SITENAME = SITENAME,
+                        maxhgt = maxhgt,
+                        twoplots = twoplots,
+                        showisoT = showisoT,
+                        savefig = savefig,
+                        extras = extras)
 end
 # --- OR
-function show_LWC_IWC(LWC::Dict, IWC::Dict, cnt::Dict, ; SITENAME="", mxhgt=10, twoplots=false, showisoT=true, savefig=:none, extras=Dict())
-    
+function show_LWC_IWC(LWC::Dict=Dict(), IWC::Dict=Dict(), cnt::Dict=Dict();
+                      SITENAME::String="",
+                      maxhgt::Union{T, Tuple{T,T}}=(0,10),
+                      twoplots::Bool=false,
+                      showisoT::Bool=true,
+                      savefig::Symbol=:none,
+                      extras=Dict()) where T<:Number
+
+    # checking input parameters:
+    maxhgt = isa(maxhgt, Tuple) ? maxhgt : (0.0, maxhgt)
+
+    twoplots = !isempty(LWC) && !isempty(IWC)
+
     # defining parameters for LWC:
     CLiqLIM = (1f-2, 0.5f1) #(-2, 1);
     CLiqCOL = cgrad(:autumn1, 7, categorical=true);
@@ -41,7 +78,7 @@ function show_LWC_IWC(LWC::Dict, IWC::Dict, cnt::Dict, ; SITENAME="", mxhgt=10, 
     tm_tick = IWC[:time][1]:Minute(90):IWC[:time][end];
     str_tick = Dates.format.(tm_tick, "H:MM");
 
-    Xstrname = "TIME UTC from $(SITENAME) "*Dates.format(IWC[:time][2], "dd.u.yyyy")
+    Xstrname = "TIME UTC from $(SITENAME) "*Dates.format(IWC[:time][2], "u dd, yyyy")
 
     strtitle = "log₁₀ water content [g m⁻³]";
 
@@ -49,29 +86,32 @@ function show_LWC_IWC(LWC::Dict, IWC::Dict, cnt::Dict, ; SITENAME="", mxhgt=10, 
 
     # creating heatmap for IWC:
     pice = plot(IWC[:time], 1f-3IWC[:height], 1f3IWC[:iwc], st=:heatmap,
-                color=CIceCOL, clim=CIceLIM, colorbar=twoplots, colorbar_scale=:log10,
-                ylim=(0, mxhgt), xlim=XLIM, xticks=(tm_tick, ""));
+                color=CIceCOL, clim=CIceLIM, colorbar=twoplots, colorbar_scale=:log10, colorbar_title="IWC [g m⁻³]",
+                ylim=maxhgt, xlim=XLIM, xticks=(tm_tick, ""), title=strtitle,
+                );
+
 
     # plot both together overlapped or in a grid (2,1):
     if twoplots
+
         mxplt = plot(LWC[:time], 1f-3LWC[:height], 1f3LWC[:lwc], st=:heatmap,
-                     color=CLiqCOL, clim=CLiqLIM, colorbar=twoplots, colorbar_scale=:log10,
-                     ylim=(0, mxhgt),
+                     color=CLiqCOL, clim=CLiqLIM, colorbar=twoplots, colorbar_scale=:log10, colorbar_title="LWC [g m⁻³]",
+                     ylim=maxhgt,
                      xlim=XLIM, xlabel=Xstrname, xticks=(tm_tick, str_tick), xrot=45, xtickfontsize=11, xguidefont=font(12),
-                     title=strtitle); #, background_color_subplot=:transparent);
+                     top_margins=-20Plots.mm); #, background_color_subplot=:transparent);
 
     else
-        mxplt = plot(pice, colorbar=:none);
+        plot!(pice, colorbar=:none);
     
-        plot!(mxplt, LWC[:time], 1f-3LWC[:height], 1f3LWC[:lwc], st=:heatmap, subplot=2, inset=(1,bbox(0,0,1,1)),
+        mxplt = plot!(pice, LWC[:time], 1f-3LWC[:height], 1f3LWC[:lwc], st=:heatmap, subplot=2, inset=(1,bbox(0,0,1,1)), #,
               color=CLiqCOL, clim=CLiqLIM, colorbar=:none, colorbar_scale=:log10, background_color_subplot=:transparent,
-              ylim=(0, mxhgt), ylabel="Altitude [km]", xlim=XLIM, xlabel=Xstrname, xticks=(tm_tick, str_tick), xrot=45, xtickfontsize=11, xguidefont=font(12),
+              ylim=maxhgt, ylabel="Altitude [km]", xlim=XLIM, xlabel=Xstrname, xticks=(tm_tick, str_tick), xrot=45, xtickfontsize=11, xguidefont=font(12),
               title=strtitle, tick_dir=:out, framestyle=:box, gridstyle=:dash);
 
     end
 
     # Preparing to add graphs for isotherms and wind vectors:
-    ihmax = findlast(1f-3cnt[:model_height] .≤ mxhgt)
+    ihmax = findlast(1f-3cnt[:model_height] .≤ maximum(maxhgt) )
     
     Xin = haskey(cnt, :model_time) ? Vector(1:length(cnt[:model_time])) : round.(Int64, range(1, stop=length(cnt[:time]), length=25))
     
@@ -87,23 +127,30 @@ function show_LWC_IWC(LWC::Dict, IWC::Dict, cnt::Dict, ; SITENAME="", mxhgt=10, 
         
         Tlevels = extrema(filter(!isnan,Tin)) |> x->ceil.(range(ceil(x[1]), stop=floor(x[2]), length=10))
         Attach_Isotherms(mxplt, Xin, Yin[1:ihmax], Tin,
-                         (1, BB), 2, TLEV = Tlevels, maxhgt=(0, mxhgt))
+                         (1, BB), 2, TLEV = Tlevels, maxhgt=maxhgt )
         twoplots && Attach_Isotherms(pice, Xin, Yin[1:ihmax], Tin,
-                         (1, BB), 2, TLEV = Tlevels, maxhgt=(0, mxhgt))
+                         (1, BB), 2, TLEV = Tlevels, maxhgt=maxhgt )
+        @info("pass iso-T plot")
     end
 
     
     # creating colorbars for merged or gridded plots:
     if twoplots
-        outplt = plot(pice, mxplt, layout=grid(2,1), ylabel=["Altitude [km]" ""], tick_dir=:out, framestyle=:box, gridstyle=:dash)# , background_color_subplot=:transparent);
+        outplt = plot(pice, mxplt, layout=grid(2,1),
+                      ylabel=["Altitude [km]" ""], ytickfontsize=11, yguidefontsize=12,
+                      tick_dir=:out, framestyle=:box, gridstyle=:dash,
+                      box=:frame, size=(900, 600), dpi=600,
+                      colorbar_titlefontsize=12,
+                      bottom_margin=[-3Plots.mm -3Plots.mm 5Plots.mm])# , background_color_subplot=:transparent);
     else
-#        return mxplt
+
         # * liquid
         liq_val = range(CLiqLIM[1], stop=CLiqLIM[2], length=7);
         cmliq = heatmap([-1], liq_val, liq_val',
                         color=CLiqCOL, clim=CLiqLIM, colorbar_title="liquid", colorbar_scale=:log10,
                         xlim=(1,2) , xticks=:none, xaxis=false,
                         tick_dir=:out, box=false, title="LWC");
+        @info("pass liquid heatmap plot")
 
         # * ice
         ice_val = range(CIceLIM[1], stop=CIceLIM[2], length=7);
@@ -111,11 +158,12 @@ function show_LWC_IWC(LWC::Dict, IWC::Dict, cnt::Dict, ; SITENAME="", mxhgt=10, 
                          color=CIceCOL, clim=CIceLIM, colorbar_title="ice", colorbar_scale=:log10,
                          xlim=(1,2), xticks=:none, xaxis=false,
                          tick_dir=:out, box=false, inset=(1, bbox(0,0,0.87,1)), subplot=2) #, title="IWC", right_margin=2Plots.mm);
-
+        @info("pass ice heatmap plot")
         # creating output layout plot:
-        ll = @layout [a{0.96w} b{0.02w} c{0.02w}];
-        outplt = plot!(cmliq, mxplt, inset=(1, bbox(0,0,0.8,1)), subplot=3, size=(900, 600), dpi=600, margin=15Plots.mm; extras...);
-        #outplt = plot(mxplt, cmliq, cmice, layout=ll, size=(900,600), dpi=300, bottom_margin=15Plots.mm, left_margin=[15Plots.mm 0Plots.mm 0Plots.mm 0Plots.mm]);
+        ll = @layout [a{0.96w} b{0.02w}]; # c{0.02w}];
+        outplt = mxplt; #plot(cmice, mxplt, inset=(1, bbox(0,0,0.8,1)), subplot=3) #, size=(900, 600), dpi=600) #, margin=15Plots.mm; extras...);
+        #outplt = plot(mxplt, cmice, layout=ll, size=(900,600), dpi=300, bottom_margin=15Plots.mm, left_margin=[15Plots.mm 0Plots.mm 0Plots.mm 0Plots.mm])
+        @info "pass outplt in one plot"
     end
     
     return outplt
@@ -138,26 +186,35 @@ WHERE:
 * ```cnt::Dict``` dictionary ouput from ```read_CNTfile(cloudnet_file)```,
 * ```cln_file::String``` Full paht of Cloudnet classification data file,
 * ```SITENANE::String``` (optional) string with name of site,
-* ```maxhgt::Number``` (optional) indicating the maximum height in km, default=8,
-* ```showlegend::Bool``` (optional) show Cloudnet legend colors, default=true
+* ```maxhgt::Number``` or ```::Tuple{Number, Number}``` (optional) indicating the range of heights in km, default=(0, 8),
+* ```showlegend::Symbol``` (optional) show Cloudnet color table, default :top, can be :bottom, :side, :none,
 * ```showatm::Dict(:wind, :isoT, :procas)``` to add meteo data to the plot, "wind" & "iso-temp" or "Profile cascade of variable", default=(true, true, false)
 
 Output:
 * ```plt::Plot``` output plot object.
 
 Part of ```CloudnetTools.jl```, see LICENSE.TXT
-    (c) Pablo Saavedra Garfias
+    (c) 2022 Pablo Saavedra Garfias
 """
-function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=:top,
-                        atmosplot=Dict(), showatm=Dict(:wind=>true, :isoT=>true, :procas=>false), savefig=:none, extras=Dict())
+function show_classific(cnt::Dict;
+                        SITENAME::String="",
+                        maxhgt::Union{T, Tuple{T,T}}=(0,8),
+                        showlegend::Symbol=:top,
+                        atmosplot=Dict(),
+                        showatm=Dict(:wind=>true, :isoT=>true, :procas=>false),
+                        savefig=:none, extras=Dict()) where T<:Number
 
+    # checking input parameters:
+    maxhgt = isa(maxhgt, Tuple) ? maxhgt : (0.0, maxhgt)
+    
     # defining time axis ticks:
     tm_tick = cnt[:time][1]:Minute(120):cnt[:time][end];
     tm_lims = (cnt[:time][1], cnt[:time][end])
 
-    ym_tick = (0:1:maxhgt)
+    ym_tick = range(maxhgt..., step=1)
     
     Xstrname = let tmp = Date.(tm_lims) |> unique
+        tmp = [Dates.format(Ti, "u d, yyyy") for Ti in tmp]
         formatstr = if length(tmp)==1
             @sprintf("Time UTC [hour] from %s", tmp[1])
         else
@@ -171,12 +228,12 @@ function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=:top,
     
     cldnet = CloudNetPalette(:classific)
     
-    Y_LIM = (0, maxhgt)
+    #Y_LIM = (0, maxhgt)
     
     classplt = plot(cnt[:time], 1f-3cnt[:height], cnt[:CLASSIFY],
                     st=:heatmap, colorbar = false, framestyle = :box,
                     color=palette(cldnet, 11), clim=(0,10),
-                    ylim=Y_LIM, yticks=ym_tick,
+                    ylim=maxhgt, yticks=ym_tick,
                     ylabel="Height A.G.L. [km]", ytickfontsize=11, minorticks=true,
                     xlabel= Xstrname, tick_direction=:out, 
                     xticks=(tm_tick, Dates.format.(tm_tick, "H")), xrot=0,
@@ -186,7 +243,7 @@ function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=:top,
 
     atmos = isempty(atmosplot) ? cnt : atmosplot
 
-    ihmax = findlast(1f-3atmos[:model_height] .≤ maxhgt)
+    ihmax = findlast(1f-3atmos[:model_height] .≤ maximum(maxhgt) )
     Xin = haskey(atmos, :model_time) ? Vector(1:length(atmos[:model_time])) : unique(round.(Int64, range(1, stop=length(atmos[:time]), length=25)))
     
     Yin = 1f-3atmos[:model_height]
@@ -203,7 +260,8 @@ function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=:top,
         #Tlevels = extrema(Tin) |> x->collect(ceil(x[1]):5:floor(x[2]))
         Tlevels = extrema(filter(!isnan,Tin)) |> x->ceil.(range(ceil(x[1]), stop=floor(x[2]), length=7))
         classplt = Attach_Isotherms(classplt, Xin, Yin[1:ihmax], Tin,
-                                    (1, BB), Nsubplt, TLEV = Tlevels)
+                                    (1, BB), Nsubplt, TLEV = Tlevels;
+                                    maxhgt=maxhgt ) #(0, maxhgt) )
         Nsubplt += 1
     end
 
@@ -211,7 +269,7 @@ function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=:top,
         classplt = Attach_Windvector(classplt, Xin[1:2:end], Yin[2:4:ihmax],
                                      atmos[:UWIND][2:4:ihmax, Xin[1:2:end]],
                                      atmos[:VWIND][2:4:ihmax, Xin[1:2:end]],
-                                     (1, BB), Nsubplt)
+                                     (1, BB), Nsubplt; maxhgt=maxhgt ) # (0, maxhgt))
         Nsubplt += 1
     end
     #
@@ -257,9 +315,16 @@ function show_classific(cnt::Dict; SITENAME="", maxhgt=8, showlegend=:top,
     return pltout
 end
 # -- OR
-function show_classific(cnt_file::String; SITENAME="", maxhgt=8, atmosplot=Dict(), showlegend=:top, savefig=:none)
+function show_classific(cnt_file::String; 
+                        SITENAME::String="",
+                        maxhgt::Union{T, Tuple{T,T}}=(0,8),
+                        showlegend::Symbol=:top,
+                        atmosplot=Dict(),
+                        showatm=Dict(:wind=>true, :isoT=>true, :procas=>false),
+                        savefig=:none, extras=Dict()) where T<:Number
+
     cnt = CloudnetTools.readCLNFile(cnt_file)
-    return show_classific(cnt, SITENAME=SITENAME, maxhgt=maxhgt, atmosplot=atmosplot, showlegend=showlegend,savefig=savefig)
+    return show_classific(cnt, SITENAME=SITENAME, maxhgt=maxhgt, showlegend=showlegend, atmosplot=atmosplot, showatm=showatm, savefig=savefig)
 end
 # ----/
 
@@ -315,7 +380,7 @@ OUTPUT:
 * ```legplt::Plots.Plot``` the legend plot generated.
 
 Part of ```CloudnetTools.jl```, see LICENSE.TXT
-   (c) Pablo Saavedra Garfias
+   (c) 2022 Pablo Saavedra Garfias
 """
 function ShowLegendCloudNetClassification(LegendType::Symbol; SITENAME::String="", showlegend=:top, extras=Dict())
 
@@ -469,7 +534,7 @@ Output:
 * ```plt::Plot``` output plot object.
 
 Part of ```CloudnetTools.jl```, see LICENSE.TXT
-   (c) Pablo Saavedra Garfias
+   (c) 2022 Pablo Saavedra Garfias
 """
 function show_measurements(cln_file::String; atmosplot=Dict(), SITENAME::String="", maxhgt=7.5, savefig=:none, attach=:none, extras=Dict())
     cln = CloudnetTools.readCLNFile(cln_file)
@@ -553,12 +618,12 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
         Tlevels = extrema(filter(!isnan,Tin)) |> x->ceil.(range(ceil(x[1]), stop=floor(x[2]), length=7))
         #Tlevels = [5, 0, -5, -10, -15, -20, -25, -30]
         Attach_Isotherms(radarplt, Xin, Yin[1:ihmax], Tin,
-                         (1, BB), 2, TLEV = Tlevels)
+                         (1, BB), 2, TLEV = Tlevels; maxhgt=(0, maxhgt))
 
         Attach_Windvector(radarplt, Xin[1:2:end], Yin[2:4:ihmax],
                           atmos[:UWIND][2:4:ihmax, Xin[1:2:end]],
                           atmos[:VWIND][2:4:ihmax, Xin[1:2:end]],
-                          (1, BB), 3)
+                          (1, BB), 3; maxhgt=(0, maxhgt))
     end
     
     # Plot for LIDAR
@@ -566,7 +631,7 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
 
     BB = bbox(0,0,0.88,1)
     lidarplt = Plots.plot(lidar[:time], Hfactor*lidar[:height], 1f7lidar[:β], st=:heatmap, 
-                          color=:roma, colorbar_scale=:log10, colorbar_tickfontsize=6, colorbar_title="Lidar Backscattering [10⁻⁷ sr⁻¹ m⁻¹]",
+                          color=:roma, colorbar_scale=:log10, colorbar_tickfontsize=6, colorbar_title="Lidar Attenuated β [10⁻⁷ sr⁻¹ m⁻¹]",
                           xlim=tm_lims, xticks=(tm_tick, ""),
                           ylim=Y_LIM, yticks=ym_tick, tick_dir=:out, ytickfontsize=11, ylabel="Height A.G.L. [km]", 
                           minorticks=true, guidefontsize=13, framestyle=:box, subplot=1)
@@ -574,16 +639,17 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
     # adding atmospheric information
     if !isempty(atmosplot)
         Attach_Isotherms(lidarplt, Xin, Yin[1:ihmax], Tin,
-                         (1, BB), 2, TLEV = Tlevels)
+                         (1, BB), 2, TLEV = Tlevels; maxhgt=(0, maxhgt))
         
         Attach_Windvector(lidarplt, Xin[1:2:end], Yin[2:4:ihmax],
                           atmos[:UWIND][2:4:ihmax, Xin[1:2:end]],
                           atmos[:VWIND][2:4:ihmax, Xin[1:2:end]],
-                          (1, BB), 3)
+                          (1, BB), 3; maxhgt=(0, maxhgt))
     end
     
     # For Radiometer LWP
     titletext = let tmp = Date.(tm_lims) |> unique
+        tmp = [Dates.format(Ti, "u d, yyyy") for Ti in tmp]
         formatstr = if length(tmp)==1
             @sprintf("Time UTC [hour] from %s", tmp[1])
         else
@@ -597,7 +663,7 @@ function show_measurements(radar::Dict, lidar::Dict, mwr::Dict; atmosplot::Dict=
     lwpfactor = ifelse(contains(mwr[:units][:LWP], "kg"), 1e3 , 1e0)
     
     mwrplt = Plots.plot(mwr[:time], lwpfactor*mwr[:LWP],
-                ylim=(0, max(200, maximum(lwpfactor*mwr[:LWP]))), ylabel="LWP [g m⁻²]", yguidefont=font(:steelblue), ytickfontsize=11,
+                        ylim=(0, max(200, maximum(lwpfactor*mwr[:LWP]))), ylabel="LWP [g m⁻²]", ytickfontsize=11, # yguidefont=font(:steelblue),
                 xticks = (tm_tick, !isnothing(cln) ? "" : Dates.format.(tm_tick, "H")),
                 xlim = tm_lims, xlabel = !isnothing(cln) ? "" : titletext, xrot=0, xguidefontsize=15, 
                 l=1.5, label=false,  tick_dir=:out, minorticks=true,
